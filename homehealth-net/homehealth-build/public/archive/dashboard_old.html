@@ -1,0 +1,3670 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Home Health Prototype v5.9.9</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" referrerpolicy="no-referrer" />
+<style>
+      /* Simple tab behavior without frameworks */
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+      .tab-btn.active {
+        border-color: rgb(59 130 246);
+        color: rgb(59 130 246);
+      }
+    
+/* v5.9.9: staging container should never display */
+
+
+/* v5.9.9 map icons */
+.ps-divicon{background: transparent; border: none;}
+.ps-icon{
+  width: 28px; height: 28px;
+  display:flex; align-items:center; justify-content:center;
+  line-height: 1;
+  border-radius: 999px;
+  background: rgba(15,23,42,.88);
+  border: 1px solid rgba(148,163,184,.35);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  font-size: 16px;
+}
+
+/* v5.9.9: Restore original navy page theme (override only page-level surfaces) */
+:root{
+  --hh-bg-0:#050814;
+  --hh-bg-1:#070b1a;
+  --hh-bg-2:#0b1430;
+  --hh-panel: rgba(8, 12, 28, .72);
+  --hh-panel-2: rgba(10, 16, 36, .62);
+  --hh-border: rgba(148,163,184,.22);
+}
+html, body{
+  background:
+    radial-gradient(1200px 800px at 20% 0%, rgba(59,130,246,.18), transparent 60%),
+    radial-gradient(900px 700px at 80% 10%, rgba(245,158,11,.10), transparent 55%),
+    radial-gradient(1100px 900px at 50% 120%, rgba(99,102,241,.10), transparent 55%),
+    linear-gradient(180deg, var(--hh-bg-0), var(--hh-bg-1) 40%, var(--hh-bg-2) 100%);
+  color: #e5e7eb;
+}
+/* page containers (keep your existing component styles; just nudge surfaces back to navy) */
+.container, .page, .app, .shell{ background: transparent !important; }
+.card, .panel, .section, .box{
+  background: var(--hh-panel) !important;
+  border-color: var(--hh-border) !important;
+}
+/* common Tailwind-ish classes used in this file */
+.bg-slate-950, .bg-slate-900, .bg-slate-800{
+  background-color: transparent !important;
+}
+/* keep the main nav bar and big cards navy */
+nav, header, .topbar{
+  background: rgba(5,8,20,.70) !important;
+  border-color: var(--hh-border) !important;
+  backdrop-filter: blur(10px);
+}
+
+</style>
+  </head>
+
+  <body>
+<div id="statusMessage" class="hidden fixed top-4 right-4 z-50 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-2 text-sm text-slate-200 shadow-lg">Loading public safety data…</div> class="bg-slate-950 text-slate-100">
+    <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-slate-800 grid place-items-center font-bold">HH</div>
+          <div>
+            <div class="text-sm font-semibold leading-4">Home Health Dashboard <span id="hhVersionBadge" class="ml-2 inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] font-semibold text-slate-200">LOADED v5.9.9</span></div>
+            <div class="text-xs text-slate-400">Vue/NPM model — single-page prototype</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="hidden sm:inline text-xs text-slate-400">Logged in as</span>
+          <span class="text-sm font-semibold">Nurse Taylor</span>
+          <button class="rounded-xl border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-900">
+            Sign out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+      <!-- Tabs -->
+      <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+        <button
+          class="tab-btn active rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="dashboard"
+        >
+          Dashboard
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="visit"
+        >
+          Visit Detail
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="schedule"
+        >
+          Schedule
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="user"
+        >
+          User Profile
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="staff"
+        >
+          Staff Profiles
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="clients"
+        >
+          Clients
+        </button>
+        <button
+          class="tab-btn rounded-xl border border-slate-700 px-4 py-2 text-sm"
+          data-tab="login"
+        >
+          Login
+        </button>
+      </div>
+
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="tab-panel active pt-6">
+        <div class="grid gap-6 lg:grid-cols-3">
+          <div class="lg:col-span-2 space-y-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h2 class="text-xl font-semibold">Today</h2>
+                  <p class="text-slate-400 text-sm">Your visits, alerts, and quick actions</p>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    id="btnStartNextVisit" class="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500"
+                  >
+                    Start Next Visit
+                  </button>
+                  <button
+                    class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                  >
+                    Add Note
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-5 grid gap-3">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-sm text-slate-400">Next visit</div>
+                      <div class="text-lg font-semibold">09:30 — Johnson, Mary</div>
+                      <div class="text-sm text-slate-400">1234 Poplar Ave, Memphis TN</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-sm text-slate-400">ETA</div>
+                      <div class="text-lg font-semibold">18 min</div>
+                      <div class="text-xs text-slate-400">Traffic: Moderate</div>
+                    </div>
+                  </div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Wound Check</span>
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-xs"
+                      >Bring: dressing kit</span
+                    >
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-lg font-semibold">11:15 — Rivera, Luis</div>
+                      <div class="text-sm text-slate-400">901 S Main St, Memphis TN</div>
+                    </div>
+                    <span
+                      class="rounded-full bg-emerald-600/20 text-emerald-200 px-3 py-1 text-xs border border-emerald-700/40"
+                      >Scheduled</span
+                    >
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-lg font-semibold">14:00 — Brown, Sara</div>
+                      <div class="text-sm text-slate-400">2016 Union Ave, Memphis TN</div>
+                    </div>
+                    <span
+                      class="rounded-full bg-amber-600/20 text-amber-200 px-3 py-1 text-xs border border-amber-700/40"
+                      >Needs confirmation</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Quick Notes</h3>
+              <p class="text-sm text-slate-400">
+                Personal reminders and patient-specific flags (non-criminal)
+              </p>
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="text-sm font-semibold">Supplies</div>
+                  <div class="text-sm text-slate-400 mt-1">
+                    Restock gloves + sterile gauze after visit #1.
+                  </div>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="text-sm font-semibold">Parking</div>
+                  <div class="text-sm text-slate-400 mt-1">
+                    Poplar Ave: use rear lot entrance if busy.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="space-y-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Local Weather</h3>
+              <p class="text-sm text-slate-400">Memphis, TN (sample)</p>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-3">
+                  <div class="text-2xl font-semibold">52°</div>
+                  <div class="text-xs text-slate-400">Now</div>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-3">
+                  <div class="text-2xl font-semibold">55°</div>
+                  <div class="text-xs text-slate-400">11am</div>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-3">
+                  <div class="text-2xl font-semibold">58°</div>
+                  <div class="text-xs text-slate-400">2pm</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Google Drive</h3>
+              <p class="text-sm text-slate-400">Organization folder + per-client folders</p>
+              <div
+                class="mt-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/30 p-4"
+              >
+                <div>
+                  <div class="text-sm font-semibold">Connected</div>
+                  <div class="text-xs text-slate-400">Root: HomeHealth / Memphis</div>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Manage
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Arrival Checklist</h3>
+              <ul class="mt-3 space-y-2 text-sm text-slate-300">
+                <li class="flex gap-2">
+                  <input type="checkbox" class="mt-1" /> Confirm address + unit number
+                </li>
+                <li class="flex gap-2">
+                  <input type="checkbox" class="mt-1" /> Note pets / hazards / lighting
+                </li>
+                <li class="flex gap-2">
+                  <input type="checkbox" class="mt-1" /> Hand hygiene + PPE as needed
+                </li>
+                <li class="flex gap-2">
+                  <input type="checkbox" class="mt-1" /> Verify patient identity
+                </li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- VISIT DETAIL -->
+      <section id="visit" class="tab-panel pt-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold">Visit Detail</h2>
+            <p class="text-sm text-slate-400">
+              User-centered visit workflow (pre-arrival → document → close)
+            </p>
+        <!-- v5.9.9: Traffic + Tomorrow Weather (auto on Next Visit) -->
+        <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-5 shadow">
+            <div class="text-sm font-semibold">Traffic / ETA</div>
+            <div class="mt-1 text-xs text-slate-400">Routing estimate from your current location (if allowed) to the visit address.</div>
+            <div id="visitTrafficStatus" class="mt-3 text-sm text-slate-200">—</div>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-5 shadow">
+            <div class="text-sm font-semibold">Tomorrow’s Weather</div>
+            <div class="mt-1 text-xs text-slate-400">Forecast for the visit location (tomorrow).</div>
+            <div id="visitWeatherStatus" class="mt-3 text-sm text-slate-200">—</div>
+          </div>
+        </div>
+
+          </div>
+          <div class="flex gap-2">
+            <button
+              id="btnStartVisit" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Start Visit
+            </button>
+            <button id="btnCompleteVisit" class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900">
+              Complete Visit
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 lg:grid-cols-3">
+          <!-- Left: Trip Context + Arrival Notes -->
+          <div class="space-y-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Trip Context</h3>
+              <div class="mt-3 text-sm text-slate-300 space-y-2">
+                <div><span class="text-slate-400">Scheduled:</span> Dec 18, 2025 — 09:30–10:15</div>
+                <div>
+  <span class="text-slate-400">Going to:</span>
+  <input id="visitAddress" class="ml-2 inline-block w-full sm:w-[28rem] rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-sm"
+         value="4128 Weymouth Cv, Memphis, TN" placeholder="Enter address…" />
+  <div id="visitGeoStatus" class="mt-2 text-xs text-slate-400">Ready</div>
+</div>
+                <div><span class="text-slate-400">Client:</span> Mary Johnson</div>
+              </div>
+              <div class="mt-4 grid gap-2">
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Open Map
+                </button>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Copy Address
+                </button>
+                
+<div class="flex flex-wrap gap-2">
+  <button id="btnPublicSafety"
+    class="rounded-xl border border-amber-700 text-amber-200 px-3 py-2 text-sm hover:bg-amber-900/20">
+    Check Public Safety Events
+  </button>
+  <button id="btnPublicSafetyMap"
+    class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900">
+    Map Results
+  </button>
+</div>
+<div class="mt-2 text-xs text-slate-400">
+  Pulls MPD incidents within <span class="font-mono">0.5 mi</span> for the last <span class="font-mono">14 days</span>.
+</div>
+<div id="publicSafetyPanel" class="mt-3 rounded-2xl border border-amber-800/40 bg-amber-950/10 p-4">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <div class="text-sm font-semibold text-amber-100">Public Safety (MPD Incidents)</div>
+      <div id="publicSafetySub" class="text-xs text-slate-400">Ready</div>
+    </div>
+    <div id="geoPill" class="text-xs text-slate-400 font-mono">lat=?, lon=?</div>
+  </div>
+  
+<details id="publicSafetyAccordion" class="mt-3 rounded-xl border border-slate-700 bg-slate-950/30 p-3" open>
+  <summary class="cursor-pointer select-none text-sm font-semibold text-slate-100 flex items-center gap-2">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    Public Safety Incidents (tap to collapse)
+  </summary>
+  <div id="publicSafetyContent" class="mt-3 text-sm text-slate-200">
+    <div class="text-xs text-slate-400">Click <span class="text-amber-200 font-semibold">Check Public Safety Events</span> to load incidents.
+  </div>
+</details>
+</div>
+</div>
+
+                <div class="text-xs text-slate-400">
+                  Placeholder — surfaces public safety advisories (weather alerts, road closures,
+                  public notices).
+                </div>
+              </div>
+              
+              <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <button id="btnClosestLE"
+                  class="w-full px-3 py-2 rounded-lg bg-blue-700 text-white text-sm hover:bg-blue-800 flex items-center justify-center gap-2"
+                  onclick="openClosestLawEnforcement()">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  Get Closest Law Enforcement Agency
+                </button>
+                <div class="mt-2 text-xs text-slate-400 text-center">Opens Google Maps near the visit address.</div>
+              </div>
+
+<div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <div class="flex items-center justify-between">
+                  
+
+<!-- Visit Safety & Notes (Prototype) -->
+<div id="visitSafetyCard" class="mt-3 mb-3 p-3 rounded-xl bg-slate-900/60 border border-slate-700 text-slate-100">
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-clipboard-check"></i>
+      <div class="font-semibold">Visit Safety & Notes (Prototype)</div>
+    </div>
+    <div class="flex items-center gap-3 text-sm text-slate-300 flex-wrap">
+      <div>Arrival: <span id="visitArrivalTime" class="font-mono text-slate-100">—</span></div>
+      <div>End: <span id="visitEndTime" class="font-mono text-slate-100">—</span></div>
+      <div>Nurse: <span id="visitNurseName" class="text-slate-100">—</span></div>
+    </div>
+  </div>
+
+  <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="p-3 rounded-xl bg-slate-950/40 border border-slate-700">
+      <div class="text-sm text-slate-300 flex items-center gap-2">
+        <i class="fa-solid fa-stopwatch"></i> Safety Timer (test mode)
+      </div>
+      <div class="mt-2 flex items-center gap-2 flex-wrap">
+        <div class="text-sm text-slate-300">Countdown:</div>
+        <div id="visitCountdown" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 font-mono">—</div>
+        <button id="btnExtend15" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          +15 min
+        </button>
+        <button id="btnExtend30" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          +30 min
+        </button>
+      </div>
+      <div class="mt-2 flex items-center gap-2 flex-wrap">
+        <button id="btnCancelSafetyTimer" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          Cancel timer
+        </button>
+        <button id="btnTriggerSafetyPrompt" class="px-3 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-bell"></i>
+          Trigger prompt now
+        </button>
+      </div>
+      <div class="mt-2 text-xs text-slate-400">
+        Script: <span id="safetyCallScript">“Press 1 if you are OK.”</span>
+        · Result: <span id="safetyCallResult">—</span>
+      </div>
+    </div>
+
+    <div class="p-3 rounded-xl bg-slate-950/40 border border-slate-700">
+      <label class="flex items-center gap-2 text-sm text-slate-300">
+        <input id="chkSafetyReviewed" type="checkbox" class="accent-emerald-500 w-4 h-4">
+        Public Safety reviewed (nurse confirms)
+      </label>
+      <div class="mt-3 text-sm text-slate-300">Quick status:</div>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <button id="btnStatusRunningLate" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          Running late
+        </button>
+        <button id="btnStatusNeedAssist" class="px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i> Need assistance
+        </button>
+        <button id="btnStatusLeaving" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          Leaving now
+        </button>
+      </div>
+      <div class="mt-2 text-xs text-slate-400">
+        These are form-only signals for the prototype (no phone/SMS integration).
+      </div>
+    </div>
+
+    <div class="p-3 rounded-xl bg-slate-950/40 border border-slate-700">
+      <div class="text-sm text-slate-300 flex items-center gap-2">
+        <i class="fa-solid fa-note-sticky"></i> Visit notes (prototype)
+      </div>
+      <textarea id="visitNotes" class="mt-2 w-full min-h-[96px] rounded-xl bg-slate-900 border border-slate-700 p-2 text-sm text-slate-100"
+        placeholder="Type quick notes here (saved locally in this browser for the prototype)…"></textarea>
+      <div class="mt-2 flex items-center justify-between gap-2 flex-wrap">
+        <button id="btnSaveNotes" class="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i> Save notes
+        </button>
+        <button id="btnEndVisit" class="px-3 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-flag-checkered"></i> End visit
+        </button>
+        <div class="text-xs text-slate-400">Saved: <span id="notesSavedAt">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+    <div class="text-sm text-slate-300">
+      Start: <span id="visitStartTime">—</span> · Nurse: <span id="visitNurseName">—</span>
+    </div>
+  </div>
+  <div class="mt-2 text-sm text-slate-300">
+    Test mode: after <span class="font-semibold text-slate-100">1 minute</span>, the app will trigger a simulated safety call prompt.
+  </div>
+  <div class="mt-3 flex items-center gap-2 flex-wrap">
+    <div class="text-sm">Countdown:</div>
+    <div id="visitCountdown" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 font-mono">—</div>
+    <button id="btnCancelSafetyTimer" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+      Cancel timer
+    </button>
+    <button id="btnTriggerSafetyPrompt" class="px-3 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-sm flex items-center gap-2">
+      <i class="fa-solid fa-bell"></i>
+      Trigger prompt now
+    </button>
+  </div>
+  <div class="mt-3 text-xs text-slate-400">
+    Script: <span id="safetyCallScript">“Press 1 if you are OK.”</span>
+    · Result: <span id="safetyCallResult">—</span>
+  </div>
+</div>
+
+<div class="text-sm font-semibold">Traffic (sample)</div>
+                  <div class="text-sm text-slate-300">ETA 18 min</div>
+                </div>
+                <div class="mt-2 text-xs text-slate-400">Moderate congestion on I‑240 W.</div>
+              </div>
+              <div class="mt-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm font-semibold">Weather (sample)</div>
+                  <div class="text-sm text-slate-300">52° / Clear</div>
+                </div>
+                <div class="mt-2 text-xs text-slate-400">Next 2 hrs: 52°→55°. Wind light.</div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Arrival Notes</h3>
+              <div class="mt-4 space-y-3">
+                <div>
+                  <label class="text-xs text-slate-400">Gate / entry code</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="e.g., #1234"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Parking instructions</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="e.g., park behind building near stairs"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Hazards / considerations</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="e.g., dog in yard, steep steps, poor lighting"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">What to note upon arrival</label>
+                  <textarea
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    rows="4"
+                    placeholder="e.g., verify patient identity, assess fall risk, ensure safe pathway"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle: Visit Results -->
+          <div class="lg:col-span-2 space-y-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <h3 class="text-lg font-semibold">Visit Results</h3>
+              <p class="text-sm text-slate-400">Structured fields + narrative note</p>
+
+              <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="text-xs text-slate-400">Arrival time</label>
+                  <input
+                    type="datetime-local"
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"  step="60"id="visitResultsArrivalTime" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Departure time</label>
+                  <input
+                    type="datetime-local" step="60"
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm" id="visitResultsDepartureTime" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Outcome</label>
+                  <select
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  >
+                    <option>Completed</option>
+                    <option>Refused</option>
+                    <option>Not home</option>
+                    <option>Reschedule</option>
+                    <option>Escalate / supervisor review</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Visit type</label>
+                  <select
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  >
+                    <option>Skilled Nursing</option>
+                    <option>Physical Therapy</option>
+                    <option>Occupational Therapy</option>
+                    <option>Speech Therapy</option>
+                    <option>Wound Care</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="text-xs text-slate-400">Services performed (multi-select)</label>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <label
+                    class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-sm"
+                  >
+                    <input type="checkbox" /> Vitals
+                  </label>
+                  <label
+                    class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-sm"
+                  >
+                    <input type="checkbox" /> Medication review
+                  </label>
+                  <label
+                    class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-sm"
+                  >
+                    <input type="checkbox" /> Wound dressing
+                  </label>
+                  <label
+                    class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-sm"
+                  >
+                    <input type="checkbox" /> Mobility / gait
+                  </label>
+                  <label
+                    class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-sm"
+                  >
+                    <input type="checkbox" /> Education / coaching
+                  </label>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="text-xs text-slate-400">Clinical narrative</label>
+                <textarea
+                  class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  rows="8"
+                  placeholder="Write your note: observations, interventions, patient response, plan..."
+                ></textarea>
+              </div>
+
+              <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="text-xs text-slate-400">Follow-up needed?</label>
+                  <select
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  >
+                    <option>No</option>
+                    <option>Yes — call supervisor</option>
+                    <option>Yes — schedule return visit</option>
+                    <option>Yes — refer to provider</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Recommended next visit date</label>
+                  <input
+                    type="date"
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <label class="flex items-center gap-2 text-sm text-slate-300">
+                  <input type="checkbox" />
+                  I attest this note is accurate and complete.
+                </label>
+                <div class="flex gap-2">
+                  <button
+                    class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+                  >
+                    Save Draft
+                  </button>
+                  <button
+                    class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold hover:bg-emerald-500"
+                  >
+                    Complete Visit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold">Annotations</h3>
+                  <p class="text-sm text-slate-400">
+                    Timestamped notes + attachments (Drive links)
+                  </p>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+                >
+                  Attach from Drive
+                </button>
+              </div>
+
+              <div class="mt-4 flex gap-2">
+                <input
+                  class="w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  placeholder="Add an annotation..."
+                />
+                <button
+                  class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between text-xs text-slate-400">
+                    <div>09:41</div>
+                    <div>Tag: Fall risk</div>
+                  </div>
+                  <div class="mt-2 text-sm">
+                    Patient reports dizziness when standing. Reviewed safety plan and hydration.
+                  </div>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between text-xs text-slate-400">
+                    <div>09:58</div>
+                    <div>Attachment</div>
+                  </div>
+                  <div class="mt-2 text-sm">Drive: Wound_Photo_2025-12-18.jpg</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCHEDULE -->
+      <section id="schedule" class="tab-panel pt-6">
+        <h2 class="text-xl font-semibold">Schedule</h2>
+        <p class="text-sm text-slate-400">List view prototype (calendar view can be added later)</p>
+
+        <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+          <div class="grid gap-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-400">09:30–10:15</div>
+                  <div class="text-lg font-semibold">Mary Johnson</div>
+                  <div class="text-sm text-slate-400">1234 Poplar Ave</div>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Open
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-400">11:15–12:00</div>
+                  <div class="text-lg font-semibold">Luis Rivera</div>
+                  <div class="text-sm text-slate-400">901 S Main St</div>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Open
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-400">14:00–14:45</div>
+                  <div class="text-lg font-semibold">Sara Brown</div>
+                  <div class="text-sm text-slate-400">2016 Union Ave</div>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Open
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USER PROFILE -->
+      <section id="user" class="tab-panel pt-6">
+        <h2 class="text-xl font-semibold">User Profile</h2>
+        <p class="text-sm text-slate-400">
+          This is the “User” landing page you described (not “Client”)
+        </p>
+
+        <div class="mt-5 grid gap-6 lg:grid-cols-3">
+          <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+            <h3 class="text-lg font-semibold">Profile</h3>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="text-xs text-slate-400">Full name</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="Taylor Smith"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Role</label>
+                <select
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                >
+                  <option selected>Nurse</option>
+                  <option>Therapist</option>
+                  <option>Admin</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Email</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="taylor@example.com"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Mobile</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="(901) 555-0123"
+                />
+              </div>
+            </div>
+
+            <div class="mt-5">
+              <label class="text-xs text-slate-400">Notification preferences</label>
+              <div class="mt-2 flex flex-wrap gap-3 text-sm">
+                <label class="flex items-center gap-2"
+                  ><input type="checkbox" checked /> Email</label
+                >
+                <label class="flex items-center gap-2"><input type="checkbox" /> SMS</label>
+                <label class="flex items-center gap-2"
+                  ><input type="checkbox" checked /> In-app</label
+                >
+              </div>
+            </div>
+
+            <div class="mt-6 flex gap-2">
+              <button
+                class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+              >
+                Save
+              </button>
+              <button
+                class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <aside class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+            <h3 class="text-lg font-semibold">Google Drive</h3>
+            <p class="text-sm text-slate-400">Connect and map organization folders</p>
+
+            <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-semibold">Status</div>
+                  <div class="text-xs text-slate-400">Connected</div>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                >
+                  Disconnect
+                </button>
+              </div>
+              <div class="mt-3 text-sm text-slate-300">
+                Root folder: <span class="font-semibold">HomeHealth / Memphis</span>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label class="text-xs text-slate-400">Default upload folder</label>
+              <input
+                class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                value="HomeHealth/Memphis/Uploads"
+              />
+            </div>
+
+            <div class="mt-4">
+              <label class="text-xs text-slate-400">Per-client folder rule</label>
+              <input
+                class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                value="HomeHealth/Memphis/Clients/{LastName}_{FirstName}"
+              />
+            </div>
+
+            <div class="mt-5">
+              <button
+                class="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold hover:bg-emerald-500"
+              >
+                Test Drive Access
+              </button>
+            </div>
+          </aside>
+        </div>
+      
+        <!-- hhNurseFlow: Assigned Clients (User Profile) -->
+        <div id="userAssignedClientsCard" class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold">Assigned Clients</div>
+              <div class="mt-1 text-xs text-slate-400">Clients assigned to the selected nurse (from the Clients tab list).</div>
+            </div>
+            <div class="text-xs text-slate-400">Nurse: <span id="userProfileSelectedNurse" class="font-semibold">—</span></div>
+          </div>
+          
+          <div class="mt-4 overflow-hidden rounded-xl border border-slate-800">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-950/40 text-slate-200">
+                <tr>
+                  <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">Client</th>
+                  <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide">Address</th>
+                </tr>
+              </thead>
+              <tbody id="userProfileClientTbody" class="divide-y divide-slate-800 bg-slate-950/20">
+                <tr>
+                  <td class="px-3 py-2 text-slate-400" colspan="2">Select a nurse in the Login tab to populate this list.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+</section>
+
+      <!-- STAFF PROFILES -->
+      <section id="staff" class="tab-panel pt-6">
+        <h2 class="text-xl font-semibold">Staff Profiles</h2>
+        <p class="text-sm text-slate-400">
+          Nurse / therapist roster + profile detail (admin-gated in production)
+        </p>
+
+        <div class="mt-5 grid gap-6 lg:grid-cols-3">
+          <!-- Staff list -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold">Roster</h3>
+                <p class="text-xs text-slate-400">Select a staff member to view/edit</p>
+              </div>
+              <button
+                class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+              >
+                Add Staff
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-2">
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold">Taylor Smith</div>
+                    <div class="text-sm text-slate-400">Nurse • Memphis</div>
+                  </div>
+                  <span
+                    class="rounded-full bg-emerald-600/20 text-emerald-200 px-3 py-1 text-xs border border-emerald-700/40"
+                    >Active</span
+                  >
+                </div>
+                <div class="mt-2 text-xs text-slate-400">taylor@example.com • (901) 555-0123</div>
+              </button>
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold">Jordan Lee</div>
+                    <div class="text-sm text-slate-400">Therapist • Memphis</div>
+                  </div>
+                  <span
+                    class="rounded-full bg-emerald-600/20 text-emerald-200 px-3 py-1 text-xs border border-emerald-700/40"
+                    >Active</span
+                  >
+                </div>
+                <div class="mt-2 text-xs text-slate-400">jordan@example.com • (901) 555-0199</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Staff profile -->
+          <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold">Staff Profile</h3>
+                <p class="text-sm text-slate-400">
+                  Credentials, service area, availability, and Drive mapping
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+                >
+                  Reset Password
+                </button>
+                <button
+                  class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="text-xs text-slate-400">Full name</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="Taylor Smith"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Role</label>
+                <select
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                >
+                  <option selected>Nurse</option>
+                  <option>Therapist</option>
+                  <option>Admin</option>
+                  <option>Dispatcher</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs text-slate-400">Email</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="taylor@example.com"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Mobile</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  value="(901) 555-0123"
+                />
+              </div>
+
+              <div>
+                <label class="text-xs text-slate-400">License / credential #</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  placeholder="e.g., RN-123456"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Specialties</label>
+                <input
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  placeholder="e.g., wound care, diabetes education"
+                />
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs text-slate-400">Service area / notes</label>
+                <textarea
+                  class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                  rows="3"
+                  placeholder="e.g., preferred zip codes, avoid highways at rush hour, language preferences..."
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-6 md:grid-cols-2">
+              <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <div class="text-sm font-semibold">Availability</div>
+                <p class="text-xs text-slate-400 mt-1">Used for scheduling (optional)</p>
+                <div class="mt-3 grid gap-2">
+                  <div class="flex items-center justify-between text-sm">
+                    <span>Mon–Fri</span><span class="text-slate-300">08:00–16:30</span>
+                  </div>
+                  <div class="flex items-center justify-between text-sm">
+                    <span>Weekend</span><span class="text-slate-300">Off</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <div class="text-sm font-semibold">Google Drive Mapping</div>
+                <p class="text-xs text-slate-400 mt-1">Per-staff defaults (optional)</p>
+                <div class="mt-3 space-y-3">
+                  <div>
+                    <label class="text-xs text-slate-400">Drive root</label>
+                    <input
+                      class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                      value="HomeHealth/Memphis"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs text-slate-400">Uploads folder</label>
+                    <input
+                      class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                      value="HomeHealth/Memphis/Uploads"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLIENTS -->
+      <section id="clients" class="tab-panel pt-6">
+        <h2 class="text-xl font-semibold">Clients</h2>
+        <p class="text-sm text-slate-400">
+          Client roster + client profile detail + quick links to visits and Drive
+        </p>
+
+        <div class="mt-5 grid gap-6 lg:grid-cols-3">
+          <!-- Roster -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <input
+                class="w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                placeholder="Search clients..."
+              />
+              <button
+                class="w-full sm:w-auto rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+              >
+                Add Client
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-2">
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Mary Johnson</div>
+                <div class="text-sm text-slate-400">DOB: 1948-05-11 • 1234 Poplar Ave</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Wound Care</span>
+                </div>
+              </button>
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Luis Rivera</div>
+                <div class="text-sm text-slate-400">DOB: 1962-01-02 • 901 S Main St</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Physical Therapy</span>
+                </div>
+              </button>
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Sara Brown</div>
+                <div class="text-sm text-slate-400">DOB: 1956-10-19 • 2016 Union Ave</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">OT</span>
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Fall Risk</span>
+                </div>
+              </button>
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Angela Walker</div>
+                <div class="text-sm text-slate-400">DOB: 1953-04-12 • 3000 Barron, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Robert Hayes</div>
+                <div class="text-sm text-slate-400">DOB: 1949-09-03 • 2800 Spotswood, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Mary Ellis</div>
+                <div class="text-sm text-slate-400">DOB: 1960-11-27 • 4646 Poplar, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Kevin Simmons</div>
+                <div class="text-sm text-slate-400">DOB: 1957-02-14 • 1500 Pendleton, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Patricia Moore</div>
+                <div class="text-sm text-slate-400">DOB: 1965-07-08 • 1100 Semmes, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Derrick Johnson</div>
+                <div class="text-sm text-slate-400">DOB: 1951-12-19 • 3000 Park, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Sharon Price</div>
+                <div class="text-sm text-slate-400">DOB: 1953-04-12 • 3100 Larkspur, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Marcus Reed</div>
+                <div class="text-sm text-slate-400">DOB: 1949-09-03 • 3000 Kimball, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Denise Clark</div>
+                <div class="text-sm text-slate-400">DOB: 1960-11-27 • 2800 Deadrick, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Henry Bennett</div>
+                <div class="text-sm text-slate-400">DOB: 1957-02-14 • 1500 Marianna, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Tamika Lewis</div>
+                <div class="text-sm text-slate-400">DOB: 1965-07-08 • 1200 Aubra Rd, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">George Turner</div>
+                <div class="text-sm text-slate-400">DOB: 1951-12-19 • 1000 Kney, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Linda White</div>
+                <div class="text-sm text-slate-400">DOB: 1953-04-12 • 1000 Chelsea, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Brian Scott</div>
+                <div class="text-sm text-slate-400">DOB: 1949-09-03 • 1000 Morehead, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Carolyn Green</div>
+                <div class="text-sm text-slate-400">DOB: 1960-11-27 • 900 Decatur, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">James Young</div>
+                <div class="text-sm text-slate-400">DOB: 1957-02-14 • 936 Lewis, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Alicia Martin</div>
+                <div class="text-sm text-slate-400">DOB: 1965-07-08 • 6500 Century Arbor Pl, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Samuel King</div>
+                <div class="text-sm text-slate-400">DOB: 1951-12-19 • 6600 Rainbrook Ln, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Teresa Hill</div>
+                <div class="text-sm text-slate-400">DOB: 1953-04-12 • 6400 Girvan Ct, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Calvin Baker</div>
+                <div class="text-sm text-slate-400">DOB: 1949-09-03 • 1300 Greenbrook Bnd, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Monica Adams</div>
+                <div class="text-sm text-slate-400">DOB: 1960-11-27 • 6500 Gallan Dr, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Phillip Wright</div>
+                <div class="text-sm text-slate-400">DOB: 1957-02-14 • 2000 Hillshire, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Vanessa Brooks</div>
+                <div class="text-sm text-slate-400">DOB: 1965-07-08 • 1500 Century Arbor Ln, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+
+              <button
+                class="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-4 hover:bg-slate-950/40"
+              >
+                <div class="font-semibold">Ethan Collins</div>
+                <div class="text-sm text-slate-400">DOB: 1951-12-19 • 6800 Appling Farms Pkwy, Memphis, TN</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="rounded-full bg-slate-800 px-3 py-1 text-xs">Skilled Nursing</span>
+                </div>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Client profile -->
+          <div class="lg:col-span-2 space-y-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold">Client Profile</h3>
+                  <p class="text-sm text-slate-400">
+                    Demographics + contacts + safety/arrival notes + Drive folder
+                  </p>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+                  >
+                    Open Drive Folder
+                  </button>
+                  <button
+                    class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-5 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label class="text-xs text-slate-400">Full name</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    value="Mary Johnson"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">DOB</label>
+                  <input
+                    type="date"
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    value="1948-05-11"
+                  />
+                </div>
+
+                <div>
+                  <label class="text-xs text-slate-400">Primary phone</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="(901) 555-0101"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Preferred language</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="English"
+                  />
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="text-xs text-slate-400">Address</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    value="1234 Poplar Ave, Memphis TN"
+                  />
+                </div>
+
+                <div>
+                  <label class="text-xs text-slate-400">Emergency contact name</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="Jane Johnson"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400">Emergency contact phone</label>
+                  <input
+                    class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    placeholder="(901) 555-0111"
+                  />
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="text-xs text-slate-400">Care plan / diagnoses (high level)</label>
+                  <textarea
+                    class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                    rows="3"
+                    placeholder="Keep this high-level; details can live in visit notes or attachments."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="mt-6 grid gap-6 md:grid-cols-2">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="text-sm font-semibold">Arrival / Home Notes</div>
+                  <p class="text-xs text-slate-400 mt-1">
+                    Used to populate the visit pre-arrival panel
+                  </p>
+                  <div class="mt-3 space-y-3">
+                    <div>
+                      <label class="text-xs text-slate-400">Gate / entry code</label>
+                      <input
+                        class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                        placeholder="#1234"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-400">Parking instructions</label>
+                      <input
+                        class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                        placeholder="Park behind house near side gate"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-400">Home hazards</label>
+                      <input
+                        class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                        placeholder="Dog in yard, steep steps"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="text-sm font-semibold">Google Drive</div>
+                  <p class="text-xs text-slate-400 mt-1">Per-client folder (recommended)</p>
+                  <div class="mt-3 space-y-3">
+                    <div>
+                      <label class="text-xs text-slate-400">Client folder path</label>
+                      <input
+                        class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                        value="HomeHealth/Memphis/Clients/Johnson_Mary"
+                      />
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        class="w-full rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                      >
+                        Create Folder
+                      </button>
+                      <button
+                        class="w-full rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                      >
+                        Link Existing
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold">Visit History</h3>
+                  <p class="text-sm text-slate-400">Recent visits and quick open</p>
+                </div>
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-900"
+                >
+                  New Visit
+                </button>
+              </div>
+
+              <div class="mt-4 grid gap-3">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm text-slate-400">Dec 18, 2025 — Skilled Nursing</div>
+                      <div class="text-sm font-semibold">Wound check + vitals</div>
+                    </div>
+                    <button
+                      class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm text-slate-400">Dec 11, 2025 — Skilled Nursing</div>
+                      <div class="text-sm font-semibold">Medication review + education</div>
+                    </div>
+                    <button
+                      class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIN -->
+      <section id="login" class="tab-panel pt-6">
+        <div
+          class="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow"
+        >
+          <h2 class="text-xl font-semibold">Login</h2>
+          <p class="text-sm text-slate-400">
+            Prototype only — wire this to Cognito or your auth API
+          </p>
+        <!-- hhNurseFlow: Nurse Picker (static HTML so you always see it) -->
+        <div id="nursePickerCard" class="mt-5 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow">
+          <div class="text-sm font-semibold">Select nurse (prototype shortcut)</div>
+          <div class="mt-1 text-xs text-slate-400">Click a nurse below (no password). This filters Clients + populates User Profile.</div>
+          <div id="loginUsers" class="mt-4 space-y-2">
+            <button type="button" class="hh-nurse-btn w-full rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-left hover:bg-slate-950/40" data-userid="taylor" data-username="Nurse Taylor">
+              <div class="text-lg font-semibold">Nurse Taylor</div><div class="text-xs text-slate-400">Tap to select</div>
+            </button>
+            <button type="button" class="hh-nurse-btn w-full rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-left hover:bg-slate-950/40" data-userid="jordan" data-username="Nurse Jordan">
+              <div class="text-lg font-semibold">Nurse Jordan</div><div class="text-xs text-slate-400">Tap to select</div>
+            </button>
+            <button type="button" class="hh-nurse-btn w-full rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-left hover:bg-slate-950/40" data-userid="kim" data-username="Nurse Kim">
+              <div class="text-lg font-semibold">Nurse Kim</div><div class="text-xs text-slate-400">Tap to select</div>
+            </button>
+            <button type="button" class="hh-nurse-btn w-full rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-left hover:bg-slate-950/40" data-userid="lee" data-username="Nurse Lee">
+              <div class="text-lg font-semibold">Nurse Lee</div><div class="text-xs text-slate-400">Tap to select</div>
+            </button>
+          </div>
+        </div>
+
+
+          <div class="mt-5 space-y-4">
+            <div>
+              <label class="text-xs text-slate-400">Email</label>
+              <input
+                type="email"
+                class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                placeholder="name@agency.com"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Password</label>
+              <input
+                type="password"
+                class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              class="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+            >
+              Login
+            </button>
+
+            <div class="flex items-center justify-between text-sm">
+              <a class="text-slate-300 hover:text-white" href="#">Forgot password?</a>
+              <a class="text-slate-300 hover:text-white" href="#">Need an account?</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="mt-10 border-t border-slate-800 pt-6 text-xs text-slate-500">
+        <div class="mx-auto max-w-6xl px-1">
+          Prototype HTML only (no backend). Intended to model the Home Health workflow for
+          Benoit/Benjamin.
+        </div>
+      </footer>
+    </main>
+
+    <script>
+      const btns = Array.from(document.querySelectorAll('.tab-btn'))
+      const panels = Array.from(document.querySelectorAll('.tab-panel'))
+
+      function activate(tabId) {
+        btns.forEach((b) => b.classList.toggle('active', b.dataset.tab === tabId))
+        panels.forEach((p) => p.classList.toggle('active', p.id === tabId))
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+
+      btns.forEach((b) => b.addEventListener('click', () => activate(b.dataset.tab)))
+    </script>
+  
+<!-- Public Safety Map Modal (v5.9.9) -->
+<div id="psBackdrop" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 p-3">
+  <div class="w-full max-w-6xl h-[96vh] overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 flex flex-col">
+    <div class="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+      <div>
+        <div id="psMapTitle" class="text-sm font-semibold text-slate-100">Public Safety Map</div>
+        <div id="psMapMeta" class="text-xs text-slate-400">Zoom: 12</div>
+      </div>
+      <button id="btnCloseMap" class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900">Close Public Safety</button>
+    </div>
+    <div id="psMap" class="flex-1 min-h-0 w-full"></div>
+    <div class="border-t border-slate-800 px-4 py-2 text-xs text-slate-400">
+      Tip: markers are incidents; the pin is the visit location; the circle is the radius.
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // --- v5.9.9 Geocode + MPD incidents + Map (Leaflet) ---
+  const GEOCODE_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
+  const MPD_QUERY_URL = "https://services2.arcgis.com/saWmpKJIUAjyyNVc/arcgis/rest/services/MPD_Public_Safety_Incidents/FeatureServer/0/query";
+
+  const PS = {
+    radiusMiles: 0.5,
+    windowDays: 14,
+    lat: null,
+    lon: null,
+    matched: null,
+    incidents: [],
+  };
+
+  function psMeters(mi){ return mi * 1609.344; }
+  function psEsc(s){ return (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+  function psFmtDate(ms){ if(!ms) return ""; return new Date(ms).toLocaleString(); }
+
+  function setGeoPill(){
+    const el = document.getElementById("geoPill");
+    if(!el) return;
+    if(typeof PS.lat === "number" && typeof PS.lon === "number"){
+      el.textContent = `lat=${PS.lat.toFixed(6)}, lon=${PS.lon.toFixed(6)}`;
+    } else {
+      el.textContent = "lat=?, lon=?";
+    }
+  }
+  function setSub(msg){ const el = document.getElementById("publicSafetySub"); if(el) el.textContent = msg; }
+  function setGeoStatus(msg){ const el = document.getElementById("visitGeoStatus"); if(el) el.textContent = msg; }
+
+  async function geocodeVisit(force=false){
+    const input = document.getElementById("visitAddress");
+    if(!input) return null;
+    const addr = input.value.trim();
+    if(!addr){
+      setGeoStatus("Enter an address.");
+      PS.lat = PS.lon = null; PS.matched = null;
+      setGeoPill();
+      return null;
+    }
+    setGeoStatus("Geocoding…");
+    const url = `${GEOCODE_URL}?SingleLine=${encodeURIComponent(addr)}&maxLocations=1&outFields=*&f=pjson`;
+    console.log("[GEOCODE]", url);
+    const r = await fetch(url);
+    const j = await r.json();
+    if(!j.candidates || !j.candidates.length){
+      setGeoStatus("No match found.");
+      PS.lat = PS.lon = null; PS.matched = null;
+      setGeoPill();
+      return null;
+    }
+    const best = j.candidates[0];
+    PS.lat = best.location.y;
+    PS.lon = best.location.x;
+    PS.matched = best.address;
+    setGeoStatus(`Mapped: ${best.address} (score ${best.score})`);
+    setGeoPill();
+    return { lat: PS.lat, lon: PS.lon };
+  }
+
+  
+  // v5.9.9: Font Awesome icon mapping for public safety incidents (Leaflet markers + table icons)
+  // Uses Font Awesome Free (loaded in <head>)
+  function psIconClass(a){
+    const cat = String(a?.UCR_Category || "").toLowerCase();
+    const desc = String(a?.UCR_Description || "").toLowerCase();
+    const s = (cat + " " + desc);
+
+    // Violent
+    if (s.includes("homicide") || s.includes("murder")) return "fa-solid fa-skull";
+    if (s.includes("assault") || s.includes("battery") || s.includes("aggravated assault")) return "fa-solid fa-hand-fist";
+    if (s.includes("robbery") || s.includes("carjacking")) return "fa-solid fa-mask";
+
+    // Property
+    if (s.includes("burglary") || s.includes("breaking") || s.includes("breaking and entering")) return "fa-solid fa-house-chimney-crack";
+    if (s.includes("theft") || s.includes("larceny") || s.includes("shoplift") || s.includes("stolen property")) return "fa-solid fa-bag-shopping";
+    if (s.includes("vehicle") || s.includes("auto") || s.includes("car") || s.includes("motor") || s.includes("mv") || s.includes("stolen vehicle")) return "fa-solid fa-car-burst";
+
+    // Weapons / drugs
+    if (s.includes("weapon") || s.includes("gun") || s.includes("firearm") || s.includes("shots fired")) return "fa-solid fa-gun";
+    if (s.includes("drug") || s.includes("narc") || s.includes("controlled") || s.includes("possession") || s.includes("distribution")) return "fa-solid fa-pills";
+
+    // Other
+    if (s.includes("arson") || s.includes("fire")) return "fa-solid fa-fire-flame-curved";
+    if (s.includes("fraud") || s.includes("forgery") || s.includes("identity") || s.includes("counterfeit")) return "fa-solid fa-file-invoice";
+    if (s.includes("vandal") || s.includes("damage") || s.includes("criminal mischief") || s.includes("property damage")) return "fa-solid fa-hammer";
+
+    return "fa-solid fa-location-dot";
+  }
+
+  function psIconHtml(a){
+    const cls = psIconClass(a);
+    return `<i class="${cls}" aria-hidden="true"></i>`;
+  }
+
+  function psLeafletIcon(a){
+    const icon = psIconHtml(a);
+    return L.divIcon({
+      className: "ps-divicon",
+      html: `<div class="ps-icon" title="${psEsc((a?.UCR_Category||'') + ': ' + (a?.UCR_Description||''))}">${icon}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -12]
+    });
+  }
+
+function renderIncidents(list){
+    const host = document.getElementById("publicSafetyContent");
+    if(!host) return;
+    if(!list || !list.length){
+      host.innerHTML = '<div class="text-sm text-emerald-200">No incidents returned for this radius/window.</div>';
+      return;
+    }
+    const rows = list.slice(0, 40).map(f=>{
+      const a = f.attributes || {};
+      return `<tr class="border-b border-slate-800/70">
+        <td class="py-2 px-3 text-sm" title="${psEsc((a.UCR_Category||'') + ': ' + (a.UCR_Description||''))}">${psIconHtml(a)}</td>
+        <td class="py-2 px-3 text-xs text-slate-300 whitespace-nowrap">${psEsc(psFmtDate(a.Offense_Datetime))}</td>
+        <td class="py-2 px-3 text-xs text-slate-200 font-semibold">${psEsc(a.UCR_Category || "")}</td>
+        <td class="py-2 px-3 text-xs text-slate-300">${psEsc(a.UCR_Description || "")}</td>
+        <td class="py-2 px-3 text-xs text-slate-300">${psEsc(a.Street_Address || "")}</td>
+      </tr>`;
+    }).join("");
+    host.innerHTML = `
+      <div class="text-xs text-slate-400 mb-2">Showing top ${Math.min(40, list.length)} of ${list.length} incidents.</div>
+      <div class="overflow-auto rounded-xl border border-slate-800 bg-slate-950/20">
+        <table class="min-w-[820px] w-full text-left">
+          <thead class="bg-slate-950/50">
+            <tr class="border-b border-slate-800">
+              <th class="py-2 px-3 text-xs text-slate-400 font-semibold">Icon</th>
+              <th class="py-2 px-3 text-xs text-slate-400 font-semibold">When</th>
+              <th class="py-2 px-3 text-xs text-slate-400 font-semibold">Category</th>
+              <th class="py-2 px-3 text-xs text-slate-400 font-semibold">Description</th>
+              <th class="py-2 px-3 text-xs text-slate-400 font-semibold">Address</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  async function loadPublicSafety(){
+    setSub("Loading incidents…");
+    const geo = await geocodeVisit(false);
+    if(!geo){ setSub("Address not mapped."); return; }
+
+    const end = Date.now();
+    const start = end - (PS.windowDays * 24 * 60 * 60 * 1000);
+
+    const params = new URLSearchParams({
+      where: "1=1",
+      geometry: `${PS.lon},${PS.lat}`,
+      geometryType: "esriGeometryPoint",
+      inSR: "4326",
+      distance: String(psMeters(PS.radiusMiles)),
+      units: "esriSRUnit_Meter",
+      outFields: "Offense_Datetime,UCR_Category,UCR_Description,Street_Address,Latitude,Longitude,Precinct,Ward,Crime_ID",
+      orderByFields: "Offense_Datetime DESC",
+      resultRecordCount: "200",
+      returnGeometry: "true",
+      time: `${start},${end}`,
+      f: "json"
+    });
+
+    const url = `${MPD_QUERY_URL}?${params.toString()}`;
+    console.log("[MPD QUERY]", url);
+
+    const host = document.getElementById("publicSafetyContent");
+    if(host) host.innerHTML = '<div class="text-xs text-slate-400">Querying MPD incidents…</div>';
+
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j.error){
+      const msg = (j.error.details && j.error.details.length) ? j.error.details.join(" ") : (j.error.message || "Unknown error");
+      setSub("Query error.");
+      if(host){
+        host.innerHTML = `<div class="text-sm text-rose-200">MPD query failed: ${psEsc(msg)}</div>
+          <div class="mt-2 text-xs text-slate-500 font-mono break-all">${psEsc(url)}</div>`;
+      }
+      return;
+    }
+
+    PS.incidents = j.features || [];
+    setSub(`Loaded ${PS.incidents.length} incidents.`);
+    renderIncidents(PS.incidents);
+  }
+
+  // --- Map (Leaflet) ---
+  let psMap, psLayer, psCircle;
+
+  function ensureMap(){
+    if(psMap) return;
+    psMap = L.map("psMap").setView([35.1495, -90.0490], 14); // start closer than US-wide
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(psMap);
+    psLayer = L.layerGroup().addTo(psMap);
+  }
+
+  function openMapModal(){
+    const bd = document.getElementById("psBackdrop");
+    if(bd){ bd.classList.remove("hidden"); bd.classList.add("flex"); }
+    setTimeout(()=>psMap && psMap.invalidateSize(), 80);
+  }
+  function closeMapModal(){
+    const bd = document.getElementById("psBackdrop");
+    if(bd){ bd.classList.add("hidden"); bd.classList.remove("flex"); }
+  }
+
+  async function showPublicSafetyMap(){
+    // Make sure we have incidents (and geocode)
+    if(!PS.incidents || PS.incidents.length === 0){
+      await loadPublicSafety();
+    }
+    if(!(typeof PS.lat === "number" && typeof PS.lon === "number")){
+      setSub("Map needs a valid geocode.");
+      return;
+    }
+
+    ensureMap();
+    psLayer.clearLayers();
+    if(psCircle){ psCircle.remove(); psCircle = null; }
+
+    const center = L.latLng(PS.lat, PS.lon);
+
+    // start zoomed in so it never shows the whole US
+    psMap.setView(center, 14);
+
+    // center marker + radius circle
+    L.marker(center, { icon: L.divIcon({ className: 'ps-divicon', html: `<div class="ps-icon" title="Visit location">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="28" height="28"><!--!Font Awesome Free v7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M96 44.9c0-12.7 7.5-24.2 19.2-29.3l96-42c8.2-3.6 17.5-3.6 25.7 0l96 42C344.5 20.7 352 32.2 352 44.9l0 99.1c0 70.7-57.3 128-128 128S96 214.7 96 144l0-99.1zM304 128l-111.6 0-.4 0-48 0 0 16c0 44.2 35.8 80 80 80s80-35.8 80-80l0-16zM208 16l0 16-16 0c-4.4 0-8 3.6-8 8l0 16c0 4.4 3.6 8 8 8l16 0 0 16c0 4.4 3.6 8 8 8l16 0c4.4 0 8-3.6 8-8l0-16 16 0c4.4 0 8-3.6 8-8l0-16c0-4.4-3.6-8-8-8l-16 0 0-16c0-4.4-3.6-8-8-8L216 8c-4.4 0-8 3.6-8 8zM142.6 323c-6.5-4.9-15.2-6.2-22.6-2.8-61.4 28.2-104.1 90.2-104.1 162.1 0 16.4 13.3 29.7 29.7 29.7l356.6 0c16.4 0 29.7-13.3 29.7-29.7 0-72-42.7-134-104.1-162.1-7.4-3.4-16.1-2.1-22.6 2.8l-67 50.2c-8.5 6.4-20.3 6.4-28.8 0l-67-50.2z"/></svg>
+</div>`, iconSize: [28,28], iconAnchor: [14,14] }), zIndexOffset: 1000 }).addTo(psLayer).bindPopup(`<b>Visit</b><br/>${psEsc(PS.matched || "")}`);
+    psCircle = L.circle(center, { radius: psMeters(PS.radiusMiles) }).addTo(psLayer);
+
+    // incident markers
+    let bounds = L.latLngBounds([center]);
+    if ((PS.incidents || []).length === 0) {
+      // No incident points, keep a consistent neighborhood zoom
+      psMap.setView(center, 14);
+    }
+    for(const f of (PS.incidents || [])){
+      const a = f.attributes || {};
+      const lat = a.Latitude, lon = a.Longitude;
+      if(typeof lat !== "number" || typeof lon !== "number") continue;
+      const p = L.latLng(lat, lon);
+      bounds.extend(p);
+      const label = `<div style="font-size:12px;">
+        <b>${psEsc(a.UCR_Category || "")}</b><br/>
+        ${psEsc(a.UCR_Description || "")}<br/>
+        ${psEsc(a.Street_Address || "")}<br/>
+        <span style="opacity:.8">${psEsc(psFmtDate(a.Offense_Datetime))}</span>
+      </div>`;
+      L.marker(p, { icon: psLeafletIcon(a) }).addTo(psLayer).bindPopup(label).bindTooltip(`<b>${psEsc(a.UCR_Category||"")}</b><br/>${psEsc(a.UCR_Description||"")}`, {direction:"top", sticky:true, opacity:0.95}).on("click", function(){ try{ this.openTooltip(); setTimeout(()=>this.closeTooltip(), 1400); }catch(e){} });
+    }
+
+    // Fit but do NOT zoom out too far; keep it neighborhood-scale.
+    psMap.fitBounds(bounds.pad(0.18), { maxZoom: 17 });
+    // Never zoom out beyond 14 (keep close)
+    if (psMap.getZoom() < 14) psMap.setZoom(14);
+
+    const t = document.getElementById("psMapTitle");
+    if(t) t.textContent = "Public Safety Map — Visit Area";
+    const m = document.getElementById("psMapMeta");
+    if(m) m.textContent = `Radius: ${PS.radiusMiles} mi · Incidents: ${PS.incidents.length} · Zoom preset: 14–17`;
+
+    openMapModal();
+  }
+
+  function wirePS(){
+    const addr = document.getElementById("visitAddress");
+    const btnPS = document.getElementById("btnPublicSafety");
+    const btnMap = document.getElementById("btnPublicSafetyMap");
+    const btnClose = document.getElementById("btnCloseMap");
+
+    if(addr){
+      addr.addEventListener("blur", ()=>geocodeVisit(true));
+      addr.addEventListener("keydown", (e)=>{ if(e.key === "Enter"){ e.preventDefault(); geocodeVisit(true); } });
+    }
+    if(btnPS) btnPS.addEventListener("click", loadPublicSafety);
+    if(btnMap) btnMap.addEventListener("click", showPublicSafetyMap);
+    if(btnClose) btnClose.addEventListener("click", closeMapModal);
+
+    const bd = document.getElementById("psBackdrop");
+    if(bd){
+      bd.addEventListener("click", (e)=>{ if(e.target === bd) closeMapModal(); });
+    }
+
+    // initial geocode on load
+    setGeoPill();
+    geocodeVisit(true).catch(()=>{});
+  }
+
+  window.addEventListener("load", wirePS);
+</script>
+
+
+
+<script>
+  // v5.9.9: Stable Public Safety accordion.
+  // - Clicking "Check Public Safety Events" creates/opens the accordion and populates it.
+  // - Accordion caption toggles ONLY between:
+  //     Closed: "Public Safety Data"
+  //     Open:   "Close Public Safety"
+  // - Re-opening the accordion DOES NOT reintroduce any generic "Close" buttons inside the content.
+  window.addEventListener("load", () => {
+    const btnPS = document.getElementById("btnPublicSafety");
+    const staging = document.getElementById("publicSafetyContent"); // hidden staging container
+    if (!btnPS || !staging) return;
+
+    function findInsertPoint() {
+      const row = btnPS.closest(".flex");
+      return row || btnPS.parentElement;
+    }
+
+    function setCaption(toggleBtn, isOpen) {
+      toggleBtn.textContent = isOpen ? "Close Public Safety" : "Public Safety Data";
+      toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+
+    function sanitizeHtml(rawHtml) {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = rawHtml || "";
+
+      // Remove any clickable element whose visible text is exactly "Close"
+      wrap.querySelectorAll("*").forEach((el) => {
+        const t = (el.textContent || "").trim().toLowerCase();
+        if (t !== "close") return;
+
+        const tag = (el.tagName || "").toLowerCase();
+        const role = (el.getAttribute("role") || "").toLowerCase();
+        const hasOnClick = el.getAttribute("onclick") != null;
+        const looksClickable = tag === "button" || tag === "a" || role === "button" || hasOnClick;
+
+        if (looksClickable) el.remove();
+      });
+
+      return wrap.innerHTML;
+    }
+
+    function ensureAccordion() {
+      let acc = document.getElementById("crimeAccordionDynamic");
+      if (acc) return acc;
+
+      const insertAfter = findInsertPoint();
+
+      acc = document.createElement("div");
+      acc.id = "crimeAccordionDynamic";
+      acc.className = "mt-3";
+
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.id = "crimeAccordionToggleDynamic";
+      toggleBtn.className =
+        "w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950/30 px-3 py-2 text-left text-xs text-slate-300 hover:bg-slate-950/40";
+      setCaption(toggleBtn, false);
+
+      const body = document.createElement("div");
+      body.id = "crimeAccordionBodyDynamic";
+      body.className = "mt-3 rounded-2xl border border-amber-800/40 bg-amber-950/10 p-3 text-sm text-slate-200";
+      body.style.display = "none";
+
+      acc.appendChild(toggleBtn);
+      acc.appendChild(body);
+
+      if (insertAfter && insertAfter.parentNode) {
+        insertAfter.insertAdjacentElement("afterend", acc);
+      } else {
+        btnPS.insertAdjacentElement("afterend", acc);
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        const isOpen = body.style.display !== "none";
+        const next = !isOpen;
+        body.style.display = next ? "block" : "none";
+        if (next) body.innerHTML = sanitizeHtml(body.innerHTML);
+        setCaption(toggleBtn, next);
+        if (next) body.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      return acc;
+    }
+
+    async function openAndPopulate() {
+      ensureAccordion();
+      const toggleBtn = document.getElementById("crimeAccordionToggleDynamic");
+      const body = document.getElementById("crimeAccordionBodyDynamic");
+      if (!toggleBtn || !body) return;
+
+      body.style.display = "block";
+      setCaption(toggleBtn, true);
+      body.innerHTML = '<div class="text-xs text-slate-400">Loading…</div>';
+
+      if (typeof loadPublicSafety === "function") {
+        try { await loadPublicSafety(); } catch (e) {}
+      }
+
+      body.innerHTML = sanitizeHtml(staging.innerHTML) || '<div class="text-xs text-slate-400">No events returned.</div>';
+      body.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    btnPS.addEventListener("click", (e) => {
+      e.preventDefault();
+      openAndPopulate();
+    });
+  });
+</script>
+
+
+<script>
+  // v5.9.9: Client roster click -> load address into Visit and switch to Visits tab (restored)
+  window.addEventListener('load', ()=>{
+    function activate(tabId){
+      const btns = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+      btns.forEach((b)=>b.classList.toggle('active', b.dataset.tab === tabId));
+      panels.forEach((p)=>p.classList.toggle('active', p.id === tabId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const clients = document.getElementById('clients');
+    const visitAddr = document.getElementById('visitAddress');
+    if(!clients || !visitAddr) return;
+
+    clients.addEventListener('click', async (e)=>{
+      // Handle clicking on a roster card anywhere (button or inside)
+      const cardBtn = e.target.closest('button.w-full.text-left.rounded-2xl');
+      if(!cardBtn) return;
+
+      const line = cardBtn.querySelector('.text-sm.text-slate-400');
+      if(!line) return;
+
+      const parts = (line.textContent || '').split('•');
+      const addr = (parts.length > 1 ? parts[1] : '').trim();
+      if(!addr) return;
+
+      visitAddr.value = addr;
+
+      // Switch to Visits tab
+      activate('visit');
+
+      // Trigger geocode immediately if available
+      if(typeof geocodeVisit === 'function'){
+        try{ await geocodeVisit(true); }catch(err){}
+      }
+    });
+  });
+</script>
+
+
+<script>
+  // v5.9.9: "Start Next Visit" / "Next Client" behavior
+  // - First click: switch to Visits tab and focus the address field
+  // - Second click (while armed): advance to next client and keep focus
+  window.addEventListener('load', ()=>{
+    const startNextBtn = document.getElementById('btnStartNextVisit');
+    const nextClientBtn = document.getElementById('btnNextClient'); // optional if present
+    const visitAddrInput = document.getElementById('visitAddress');
+
+    function activate(tabId){
+      const btns = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+      btns.forEach((b)=>b.classList.toggle('active', b.dataset.tab === tabId));
+      panels.forEach((p)=>p.classList.toggle('active', p.id === tabId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function collectRoster(){
+      const clientsPanel = document.getElementById('clients');
+      if(!clientsPanel) return [];
+      const cards = Array.from(clientsPanel.querySelectorAll('button.w-full.text-left.rounded-2xl'));
+      const list = [];
+      for(const c of cards){
+        const line = c.querySelector('.text-sm.text-slate-400');
+        if(!line) continue;
+        const txt = (line.textContent || '');
+        const parts = txt.split('•');
+        const addr = (parts.length > 1 ? parts[1] : '').trim();
+        if(!addr) continue;
+        const nameEl = c.querySelector('.font-semibold');
+        const name = nameEl ? (nameEl.textContent || '').trim() : '';
+        list.push({name, addr});
+      }
+      return list;
+    }
+
+    let armed = false;
+    let armTimer = null;
+
+    function arm(){
+      armed = true;
+      if(armTimer) clearTimeout(armTimer);
+      // auto-disarm after 8 seconds
+      armTimer = setTimeout(()=>{ armed = false; }, 8000);
+    }
+    function disarm(){
+      armed = false;
+      if(armTimer) clearTimeout(armTimer);
+      armTimer = null;
+    }
+
+    async function advanceToNext(){
+      const roster = collectRoster();
+      if(roster.length === 0){
+        alert('No client roster found to advance visits.');
+        return;
+      }
+      const cur = (visitAddrInput ? (visitAddrInput.value || '').trim().toLowerCase() : '');
+      let curIndex = roster.findIndex(v => v.addr.toLowerCase() === cur);
+      let nextIndex = (curIndex >= 0) ? (curIndex + 1) % roster.length : 0;
+      const next = roster[nextIndex];
+
+      if(visitAddrInput) visitAddrInput.value = next.addr;
+
+      if(typeof geocodeVisit === 'function'){
+        try{ await geocodeVisit(true); }catch(e){}
+      }
+      // keep focus on address field so user sees the change
+      if(visitAddrInput) visitAddrInput.focus();
+    }
+
+    async function handleNextClick(e){
+      e.preventDefault();
+
+      // First click: go to visits + focus address, do NOT advance
+      const isVisitActive = document.querySelector('.tab-panel.active')?.id === 'visit';
+      if(!armed || !isVisitActive){
+        activate('visit');
+        // focus after paint
+        setTimeout(()=>{ if(visitAddrInput) visitAddrInput.focus(); }, 50);
+        arm();
+        return;
+      }
+
+      // Second click within armed window: advance
+      await advanceToNext();
+      arm(); // keep armed so repeated clicks keep advancing
+    }
+
+    if(startNextBtn) startNextBtn.addEventListener('click', handleNextClick);
+    
+    const startVisitBtn = document.getElementById('btnStartVisit');
+    if(startVisitBtn){
+      startVisitBtn.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        // Mirror Start Next Visit first-click behavior:
+        // switch to Visit tab, focus address, geocode, and run Public Safety
+        activate('visit');
+        setTimeout(async ()=>{
+          try{
+            if(typeof geocodeVisit === 'function'){
+              await geocodeVisit(true); // auto-run public safety
+            }
+          }catch(err){ console.error(err); }
+        }, 50);
+      });
+    }
+
+    if(nextClientBtn) nextClientBtn.addEventListener('click', handleNextClick);
+
+    // Disarm when user manually changes tabs (so next click focuses again)
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ disarm(); });
+    });
+  });
+</script>
+
+
+<script>
+  // v5.9.9: Dashboard "Start Next Visit" works from ANY tab by focusing/advancing the Clients list selection.
+  // Behavior:
+  // - Clicking a client card stores the "current selection" and visually highlights it.
+  // - Clicking "Start Next Visit" on the dashboard:
+  //    1st click: switches to Clients tab, scrolls/focuses the selected client (or first client if none)
+  //    subsequent clicks (while on Clients tab): advances to next client, scrolls/focuses it
+  // (Does not remove/alter any existing features.)
+  window.addEventListener('load', ()=>{
+    const startNextBtn = document.getElementById('btnStartNextVisit');
+    const nextClientBtn = document.getElementById('btnNextClient'); // if present
+    const clientsPanel = document.getElementById('clients');
+    if(!clientsPanel) return;
+
+    const rosterSelector = 'button.w-full.text-left.rounded-2xl';
+    let roster = Array.from(clientsPanel.querySelectorAll(rosterSelector));
+
+    // Selection state
+    let selectedIndex = -1;
+
+    function refreshRoster(){
+      roster = Array.from(clientsPanel.querySelectorAll(rosterSelector));
+    }
+
+    function activate(tabId){
+      const btns = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+      btns.forEach((b)=>b.classList.toggle('active', b.dataset.tab === tabId));
+      panels.forEach((p)=>p.classList.toggle('active', p.id === tabId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function clearHighlights(){
+      roster.forEach((b)=>{
+        b.classList.remove('ring-2','ring-amber-500');
+        b.setAttribute('aria-current','false');
+      });
+    }
+
+    function highlight(idx){
+      refreshRoster();
+      if(roster.length === 0) return;
+      if(idx < 0) idx = 0;
+      if(idx >= roster.length) idx = 0;
+      selectedIndex = idx;
+
+      clearHighlights();
+      const el = roster[selectedIndex];
+      // Make focusable
+      el.setAttribute('tabindex','0');
+      el.classList.add('ring-2','ring-amber-500');
+      el.setAttribute('aria-current','true');
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+      el.focus({preventScroll:true});
+    }
+
+    function getClickedIndex(target){
+      refreshRoster();
+      const btn = target.closest(rosterSelector);
+      if(!btn) return -1;
+      return roster.indexOf(btn);
+    }
+
+    // When user clicks a client card, store selection + highlight
+    clientsPanel.addEventListener('click', (e)=>{
+      const idx = getClickedIndex(e.target);
+      if(idx === -1) return;
+      highlight(idx);
+    });
+
+    function ensureSelected(){
+      refreshRoster();
+      if(roster.length === 0) return;
+      if(selectedIndex === -1) highlight(0);
+    }
+
+    function isTabActive(id){
+      const panel = document.getElementById(id);
+      return panel && panel.classList.contains('active');
+    }
+
+    function advanceSelection(){
+      refreshRoster();
+      if(roster.length === 0) return;
+      const next = (selectedIndex >= 0 ? (selectedIndex + 1) : 0);
+      highlight(next);
+    }
+
+    function handleNext(e){
+      e.preventDefault();
+      ensureSelected();
+
+      // If not on Clients tab, go there and focus current selection
+      if(!isTabActive('clients')){
+        activate('clients');
+        // Focus after paint
+        setTimeout(()=>{ ensureSelected(); }, 50);
+        return;
+      }
+
+      // Already on Clients tab -> advance to next
+      advanceSelection();
+    }
+
+    if(startNextBtn) startNextBtn.addEventListener('click', handleNext);
+    if(nextClientBtn) nextClientBtn.addEventListener('click', handleNext);
+
+    // Initialize selection to first client (no highlight until user clicks or uses Next)
+  });
+</script>
+
+
+<script>
+  // v5.9.9: "Start Next Visit" / "Next Client" uses the selected client (or first if none),
+  // navigates to Visits, fills the address, geocodes, AND automatically runs Public Safety.
+  window.addEventListener('load', ()=>{
+    const startNextBtn = document.getElementById('btnStartNextVisit');
+    const nextClientBtn = document.getElementById('btnNextClient'); // optional
+    const clientsPanel = document.getElementById('clients');
+    const visitAddrInput = document.getElementById('visitAddress');
+    const btnPS = document.getElementById('btnPublicSafety');
+
+    if(!clientsPanel || !visitAddrInput) return;
+
+    const rosterSelector = 'button.w-full.text-left.rounded-2xl';
+    let roster = Array.from(clientsPanel.querySelectorAll(rosterSelector));
+    let selectedIndex = -1;
+
+    function refreshRoster(){
+      roster = Array.from(clientsPanel.querySelectorAll(rosterSelector));
+    }
+
+    function activate(tabId){
+      const btns = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+      btns.forEach((b)=>b.classList.toggle('active', b.dataset.tab === tabId));
+      panels.forEach((p)=>p.classList.toggle('active', p.id === tabId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function clearHighlights(){
+      roster.forEach((b)=>{
+        b.classList.remove('ring-2','ring-amber-500');
+        b.setAttribute('aria-current','false');
+      });
+    }
+
+    function highlight(idx){
+      refreshRoster();
+      if(roster.length === 0) return;
+      if(idx < 0) idx = 0;
+      if(idx >= roster.length) idx = 0;
+      selectedIndex = idx;
+
+      clearHighlights();
+      const el = roster[selectedIndex];
+      el.setAttribute('tabindex','0');
+      el.classList.add('ring-2','ring-amber-500');
+      el.setAttribute('aria-current','true');
+    }
+
+    function getClickedIndex(target){
+      refreshRoster();
+      const btn = target.closest(rosterSelector);
+      if(!btn) return -1;
+      return roster.indexOf(btn);
+    }
+
+    function getAddrFromIndex(idx){
+      refreshRoster();
+      if(roster.length === 0) return null;
+      if(idx < 0) idx = 0;
+      if(idx >= roster.length) idx = 0;
+      const line = roster[idx].querySelector('.text-sm.text-slate-400');
+      if(!line) return null;
+      const parts = (line.textContent || '').split('•');
+      const addr = (parts.length > 1 ? parts[1] : '').trim();
+      return addr || null;
+    }
+
+    // Click a client card -> store selection + highlight (no auto-navigation)
+    clientsPanel.addEventListener('click', (e)=>{
+      const idx = getClickedIndex(e.target);
+      if(idx === -1) return;
+      highlight(idx);
+    });
+
+    function ensureSelected(){
+      refreshRoster();
+      if(roster.length === 0) return;
+      if(selectedIndex === -1) highlight(0);
+    }
+
+    function isTabActive(id){
+      const panel = document.getElementById(id);
+      return panel && panel.classList.contains('active');
+    }
+
+    async function runPublicSafety(){
+      if(btnPS){
+        btnPS.click(); // uses your existing accordion logic
+        return;
+      }
+      if(typeof loadPublicSafety === 'function'){
+        try{ await loadPublicSafety(); }catch(e){}
+      }
+    }
+
+    
+  function setVisitTraffic(msg){
+    const el = document.getElementById('visitTrafficStatus');
+    if(el) el.textContent = msg;
+  }
+  function setVisitWeather(msg){
+    const el = document.getElementById('visitWeatherStatus');
+    if(el) el.textContent = msg;
+  }
+
+  function weatherCodeToText(code){
+    const m = {
+      0:"Clear",
+      1:"Mostly clear",
+      2:"Partly cloudy",
+      3:"Overcast",
+      45:"Fog",
+      48:"Depositing rime fog",
+      51:"Light drizzle",
+      53:"Drizzle",
+      55:"Heavy drizzle",
+      61:"Light rain",
+      63:"Rain",
+      65:"Heavy rain",
+      71:"Light snow",
+      73:"Snow",
+      75:"Heavy snow",
+      80:"Rain showers",
+      81:"Rain showers",
+      82:"Heavy rain showers",
+      95:"Thunderstorm",
+      96:"Thunderstorm w/ hail",
+      99:"Thunderstorm w/ hail"
+    };
+    return m[code] || `Weather code ${code}`;
+  }
+
+  async function fetchTomorrowWeather(lat, lon){
+    // Open-Meteo: free, no key; should work from file:// in Chrome
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=America/Chicago`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("Weather fetch failed");
+    const j = await r.json();
+    const d = j?.daily;
+    if(!d?.time || d.time.length < 2) throw new Error("Weather data missing");
+    const i = 1; // tomorrow
+    return {
+      date: d.time[i],
+      hi: d.temperature_2m_max?.[i],
+      lo: d.temperature_2m_min?.[i],
+      pop: d.precipitation_probability_max?.[i],
+      code: d.weathercode?.[i]
+    };
+  }
+
+  async function fetchRouteETA(originLat, originLon, destLat, destLon){
+    // OSRM routing (no live traffic, but good demo ETA)
+    const url = `https://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("Routing fetch failed");
+    const j = await r.json();
+    const route = j?.routes?.[0];
+    if(!route) throw new Error("No route");
+    return { seconds: route.duration, meters: route.distance };
+  }
+
+  async function updateTrafficAndWeatherForVisit(lat, lon){
+    // Weather
+    try{
+      setVisitWeather("Pulling tomorrow’s weather…");
+      const w = await fetchTomorrowWeather(lat, lon);
+      const hi = (typeof w.hi === "number") ? Math.round(w.hi) : "—";
+      const lo = (typeof w.lo === "number") ? Math.round(w.lo) : "—";
+      const pop = (typeof w.pop === "number") ? `${Math.round(w.pop)}%` : "—";
+      const desc = weatherCodeToText(w.code);
+      setVisitWeather(`${w.date}: ${desc} • Hi ${hi}° / Lo ${lo}° • Precip ${pop}`);
+    }catch(e){
+      setVisitWeather("Weather unavailable.");
+    }
+
+    // Traffic / ETA
+    try{
+      setVisitTraffic("Calculating route ETA…");
+      const origin = await new Promise((resolve)=>{
+        if(!navigator.geolocation) return resolve({lat:35.1495, lon:-90.0490, label:"Memphis center (fallback)"});
+        navigator.geolocation.getCurrentPosition(
+          (pos)=> resolve({lat: pos.coords.latitude, lon: pos.coords.longitude, label:"Your location"}),
+          ()=> resolve({lat:35.1495, lon:-90.0490, label:"Memphis center (fallback)"}),
+          { enableHighAccuracy:false, timeout: 3000, maximumAge: 600000 }
+        );
+      });
+      const eta = await fetchRouteETA(origin.lat, origin.lon, lat, lon);
+      const mins = Math.max(1, Math.round(eta.seconds / 60));
+      const miles = (eta.meters / 1609.344);
+      setVisitTraffic(`${origin.label}: ~${mins} min • ${miles.toFixed(1)} mi (routing estimate)`);
+    }catch(e){
+      setVisitTraffic("Traffic/ETA unavailable.");
+    }
+  }
+
+
+  async function goToSelectedVisitAndRun(){
+      ensureSelected();
+      const addr = getAddrFromIndex(selectedIndex);
+      if(!addr) return;
+
+      activate('visit');
+      visitAddrInput.value = addr;
+
+      setTimeout(()=>{ visitAddrInput.focus(); }, 50);
+
+      if(typeof geocodeVisit === 'function'){
+        try{ await geocodeVisit(true); }catch(e){}
+      }
+
+      await runPublicSafety();
+    }
+
+    function advanceSelection(){
+      refreshRoster();
+      if(roster.length === 0) return;
+      const next = (selectedIndex >= 0 ? (selectedIndex + 1) : 0);
+      highlight(next);
+    }
+
+    async function handleNext(e){
+      e.preventDefault();
+      ensureSelected();
+
+      // If already on Visits, advance each click
+      if(isTabActive('visit')){
+        advanceSelection();
+        await goToSelectedVisitAndRun();
+        return;
+      }
+
+      // From any other tab, go to selected visit + run public safety
+      await goToSelectedVisitAndRun();
+    }
+
+    if(startNextBtn) startNextBtn.addEventListener('click', handleNext);
+    if(nextClientBtn) nextClientBtn.addEventListener('click', handleNext);
+  });
+</script>
+
+
+<script>
+  // v5.9.9: User-facing status while Public Safety data is loading
+  window.addEventListener('load', ()=>{
+    const status = document.getElementById('statusMessage');
+    if(!status) return;
+
+    if(typeof window.loadPublicSafety === 'function' && !window._loadPublicSafetyWrapped){
+      const original = window.loadPublicSafety;
+      window.loadPublicSafety = async function(){
+        try{
+          status.classList.remove('hidden');
+          status.textContent = 'Loading public safety data…';
+          return await original.apply(this, arguments);
+        } finally {
+          setTimeout(()=>{
+            status.textContent = 'Public safety data loaded';
+            setTimeout(()=>status.classList.add('hidden'), 800);
+          }, 300);
+        }
+      };
+      window._loadPublicSafetyWrapped = true;
+    }
+  });
+</script>
+
+
+<script id="hhNurseFlow">
+(function(){
+  const USERS = [
+    { id: "taylor", name: "Nurse Taylor" },
+    { id: "jordan", name: "Nurse Jordan" },
+    { id: "kim",    name: "Nurse Kim" },
+    { id: "lee",    name: "Nurse Lee" }
+  ];
+  const rosterSelector = '#clients button.w-full.text-left.rounded-2xl';
+
+  const $all = (sel, root) => Array.from((root||document).querySelectorAll(sel));
+
+  function findLoggedInNameSpan(){
+    const byId = document.getElementById('loggedInAsName');
+    if(byId) return byId;
+    const header = document.querySelector('header') || document.body;
+    const spans = Array.from(header.querySelectorAll('span'));
+    return spans.find(s => /^Nurse\s+/i.test((s.textContent||"").trim())) || null;
+  }
+
+  function setLoggedInName(name){
+    const el = findLoggedInNameSpan();
+    if(el){ el.textContent = name; return; }
+    const line = Array.from(document.querySelectorAll('div,span')).find(el => (el.textContent||'').includes('Logged in as'));
+    if(line) line.innerHTML = `Logged in as <span class="font-semibold">${name}</span>`;
+  }
+
+  function toast(msg){
+    const el = document.getElementById('statusMessage');
+    if(!el) return;
+    el.classList.remove('hidden');
+    el.textContent = msg;
+    setTimeout(()=>el.classList.add('hidden'), 1200);
+  }
+
+  function activate(tabId){
+    const btns = $all('.tab-btn');
+    const panels = $all('.tab-panel');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    panels.forEach(p => p.classList.toggle('active', p.id === tabId));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function assignClientsOnce(){
+    const cards = $all(rosterSelector);
+    cards.forEach((card, idx)=>{
+      if(card.dataset.assignedUser) return;
+      const u = USERS[idx % USERS.length];
+      card.dataset.assignedUser = u.id;
+      card.dataset.assignedUserName = u.name;
+    });
+  }
+
+  function filterClientsFor(userId){
+    const cards = $all(rosterSelector);
+    cards.forEach(card => {
+      card.style.display = (card.dataset.assignedUser === userId) ? "" : "none";
+    });
+  }
+
+  function renderUserProfileClients(){
+    const list = document.getElementById('userProfileClientTbody');
+    const nurse = document.getElementById('userProfileSelectedNurse');
+    if(!list) return;
+
+    list.innerHTML = "";
+    const user = window._hhCurrentUser;
+    if(nurse) nurse.textContent = user ? user.name : "—";
+
+    if(!user){
+      list.innerHTML = '<tr><td class="px-3 py-2 text-slate-400" colspan="2">Select a nurse in the Login tab to populate this list.</td></tr>';
+      return;
+    }
+
+    const cards = $all(rosterSelector).filter(c => c.dataset.assignedUser === user.id);
+    if(cards.length === 0){
+      list.innerHTML = '<tr><td class="px-3 py-2 text-slate-400" colspan="2">No clients assigned.</td></tr>';
+      return;
+    }
+
+    cards.forEach(card => {
+      const name = card.querySelector('.font-semibold')?.textContent?.trim() || 'Client';
+      const meta = card.querySelector('.text-sm.text-slate-400')?.textContent?.trim() || '';
+      const parts = meta.split('•').map(s=>s.trim()).filter(Boolean);
+      const addr = (parts.length >= 2) ? parts[parts.length-1] : meta;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="px-3 py-2 text-slate-100">${name}</td><td class="px-3 py-2 text-slate-300">${addr}</td>`;
+      list.appendChild(tr);
+    });
+  }
+
+  function selectUser(userId, userName){
+    const u = USERS.find(x=>x.id===userId) || { id:userId, name:userName||userId };
+    window._hhCurrentUser = u;
+    setLoggedInName(u.name);
+    assignClientsOnce();
+    filterClientsFor(u.id);
+    renderUserProfileClients();
+    toast(`Selected ${u.name}. Clients filtered.`);
+    activate('user');
+  }
+
+  function wireNurseButtons(){
+    $all('#loginUsers .hh-nurse-btn').forEach(b => {
+      if(b.dataset.wired === "1") return;
+      b.dataset.wired = "1";
+      b.addEventListener('click', ()=> selectUser(b.dataset.userid, b.dataset.username));
+    });
+  }
+
+  window.addEventListener('load', ()=>{
+    // Confirm right away we loaded this file (visible badge already present)
+    assignClientsOnce();
+    wireNurseButtons();
+
+    // When Login tab clicked, focus first nurse button (list is static)
+    $all('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        if(btn.dataset.tab === 'login'){
+          wireNurseButtons();
+          setTimeout(()=> document.querySelector('#loginUsers .hh-nurse-btn')?.focus(), 50);
+        }
+        if(btn.dataset.tab === 'user') setTimeout(renderUserProfileClients, 50);
+      });
+    });
+
+    // Default state: Taylor selected so filtering is deterministic
+    if(!window._hhCurrentUser) {
+      window._hhCurrentUser = USERS[0];
+      setLoggedInName(USERS[0].name);
+      filterClientsFor(USERS[0].id);
+    }
+    renderUserProfileClients();
+
+
+function openClosestLawEnforcement(){
+  // Uses the same PS.lat / PS.lon that drive public safety + map centering
+  if(typeof PS === 'undefined' || typeof PS.lat !== 'number' || typeof PS.lon !== 'number'){
+    alert("Visit location not available yet — select a client or run Public Safety first.");
+    return;
+  }
+  const url = `https://www.google.com/maps/search/law+enforcement/@${PS.lat},${PS.lon},14z`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+  });
+})();
+</script>
+
+
+
+<script>
+// Robust lat/lon getter for the prototype.
+// Tries PS.lat/PS.lon (public safety module), then globals, then selected client coordinates if present.
+function getCurrentLatLon(){
+  // 1) Public Safety module globals (top-level const PS is accessible by name)
+  try{
+    if (typeof PS !== 'undefined'){
+      const lat = (typeof PS.lat === 'number') ? PS.lat : parseFloat(PS.lat);
+      const lon = (typeof PS.lon === 'number') ? PS.lon : parseFloat(PS.lon);
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) return {lat, lon};
+    }
+  }catch(e){}
+
+  // 2) Optional globals some builds use
+  try{
+    const lat = (typeof window.currentLat === 'number') ? window.currentLat : parseFloat(window.currentLat);
+    const lon = (typeof window.currentLon === 'number') ? window.currentLon : parseFloat(window.currentLon);
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) return {lat, lon};
+  }catch(e){}
+
+  // 3) Selected client object (if present)
+  try{
+    if (window.selectedClient){
+      const lat = (typeof selectedClient.lat === 'number') ? selectedClient.lat : parseFloat(selectedClient.lat);
+      const lon = (typeof selectedClient.lon === 'number') ? selectedClient.lon : parseFloat(selectedClient.lon);
+      if (!Number.isNaN(lat) && !Number.isNaN(lon)) return {lat, lon};
+    }
+  }catch(e){}
+
+  // 4) DOM fallback if any element carries coordinates
+  const el = document.querySelector('[data-lat][data-lon]');
+  if (el){
+    const lat = Number(el.getAttribute('data-lat'));
+    const lon = Number(el.getAttribute('data-lon'));
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) return {lat, lon};
+  }
+
+  return null;
+}
+
+function openClosestLawEnforcement(){
+  const ll = getCurrentLatLon();
+  if(!ll){
+    alert("Location not available yet. Run Public Safety first or open a client address.");
+    return;
+  }
+  const url = `https://www.google.com/maps/search/law+enforcement/@${ll.lat},${ll.lon},14z`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+</script>
+
+
+<!-- Safety Call Prompt Modal (Prototype) -->
+<div id="safetyPromptModal" class="fixed inset-0 hidden items-center justify-center bg-black/60 z-[9999]">
+  <div class="w-[min(520px,92vw)] rounded-2xl bg-slate-950 border border-slate-700 shadow-2xl p-4 text-slate-100">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-phone-volume"></i>
+        <div class="font-semibold">Safety Check Call (Prototype)</div>
+      </div>
+      <button id="btnMinimizeSafetyPrompt" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm flex items-center gap-2">
+  <i class="fa-solid fa-window-minimize"></i> Minimize
+</button>
+<button id="btnCloseSafetyPrompt" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">Close</button>
+    </div>
+    <div class="mt-3 text-sm text-slate-300">
+      This is a <span class="text-slate-100 font-semibold">prototype</span>. This prompt simulates a safety check workflow inside the form.
+      For now, we:
+      <ul class="list-disc ml-5 mt-2 space-y-1">
+        <li>Play the script on-screen (and via device audio if allowed).</li>
+        <li>Show the prompt and let the nurse confirm they are OK inside the form.</li>
+        <li>Simulate “Press 1” via a button or keyboard input.</li>
+      </ul>
+    </div>
+
+    <div class="mt-4 p-3 rounded-xl bg-slate-900/60 border border-slate-700">
+      <div class="text-sm text-slate-300">Nurse:</div>
+      <div class="text-lg font-semibold" id="modalNurseLine">—</div>
+      <div class="mt-2 text-sm text-slate-300">Script:</div>
+      <div class="mt-1 text-base" id="modalScriptLine">Press 1 if you are OK.</div>
+    </div>
+
+    <div class="mt-4 flex gap-2 flex-wrap">
+      <button id="btnSendHelp" class="px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-hand"></i> Send Help
+      </button>
+      <button id="btnPressOne" class="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-keyboard"></i> Press 1 (I’m OK)
+      </button>
+      </div>
+
+    <div class="mt-3 text-xs text-slate-400">
+      Tip: You can also press the <span class="text-slate-100 font-semibold">1</span> key on the keyboard while this dialog is open.
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+// Visit Safety & Notes (Prototype) JS
+(function(){
+  let safetyTimerId = null;
+  let countdownId = null;
+  let countdownEndsAt = null;
+
+  const SCRIPT_TEXT = "Press 1 if you are OK.";
+  const NOTES_KEY = "bh_homehealth_visit_notes_v1";
+
+  function fmtTime(d){
+    try{ return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
+    catch(e){ return String(d); }
+  }
+  function hhmm(d){
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+}
+function ymdhm(d){
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  // datetime-local expects "YYYY-MM-DDTHH:MM"
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+function setTimeInput(id, d){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const t = (el.getAttribute('type') || el.type || '').toLowerCase();
+  if(t === 'datetime-local'){
+    el.value = ymdhm(d);
+  }else{
+    el.value = hhmm(d);
+  }
+}
+
+function fmtShort(d){
+    try{
+      return d.toLocaleString([], {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+    }catch(e){ return String(d); }
+  }
+  function setText(id, v){
+    const el = document.getElementById(id);
+    if(el) el.textContent = v;
+  }
+
+  function showDock(show){
+  const d = document.getElementById('safetyPromptDock');
+  if(!d) return;
+  d.classList.toggle('hidden', !show);
+}
+
+function showModal(show){
+    const m = document.getElementById('safetyPromptModal');
+    if(!m) return;
+    m.classList.toggle('hidden', !show);
+    m.classList.toggle('flex', show);
+  }
+
+  function speakScript(){
+    try{
+      if(!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(SCRIPT_TEXT);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  function getFirstNurse(){
+    try{ if(Array.isArray(window.nurses) && window.nurses.length) return window.nurses[0]; }catch(e){}
+    try{ if(typeof nurses !== 'undefined' && Array.isArray(nurses) && nurses.length) return nurses[0]; }catch(e){}
+    return null;
+  }
+
+  function startCountdown(ms){
+    countdownEndsAt = Date.now() + ms;
+    const el = document.getElementById('visitCountdown');
+    if(!el) return;
+
+    function tick(){
+      const remaining = Math.max(0, countdownEndsAt - Date.now());
+      const sec = Math.ceil(remaining/1000);
+      el.textContent = sec + "s";
+      if(remaining <= 0){
+        clearInterval(countdownId);
+        countdownId = null;
+      }
+    }
+    tick();
+    countdownId = setInterval(tick, 250);
+  }
+
+  function clearTimers(){
+    if(safetyTimerId){ clearTimeout(safetyTimerId); safetyTimerId = null; }
+    if(countdownId){ clearInterval(countdownId); countdownId = null; }
+    countdownEndsAt = null;
+    setText('visitCountdown', '—');
+  }
+
+  function openPrompt(){
+    const n = window.__currentVisitNurse || getFirstNurse();
+    const name = n ? (n.name || n.fullName || n.displayName || "Nurse") : "Nurse";
+    const line = document.getElementById('modalNurseLine');
+    if(line) line.textContent = name;
+    const script = document.getElementById('modalScriptLine');
+    if(script) script.textContent = SCRIPT_TEXT;
+
+    setText('safetyCallResult', 'Prompt shown (test)');
+    try{ const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='Prompt shown (test)'; }catch(e){}
+    showModal(true);
+    speakScript();
+  }
+
+  function startSafetyTimerTestMode(){
+    clearTimers();
+
+    // Arrival time (required)
+    const now = new Date();
+    setText('visitArrivalTime', fmtShort(now));
+      setTimeInput('visitResultsArrivalTime', now);
+    setTimeInput('visitResultsArrivalTime', now);
+    setText('safetyCallScript', `“${SCRIPT_TEXT}”`);
+    setText('safetyCallResult', 'Timer started (test)');
+
+    // Nurse selection (first nurse per current rule)
+    const n = getFirstNurse();
+    window.__currentVisitNurse = n;
+    const name = n ? (n.name || n.fullName || n.displayName || "Nurse") : "Nurse";
+    setText('visitNurseName', name);
+
+    // TEST: 1 minute
+    const ms = 60 * 1000;
+    startCountdown(ms);
+    safetyTimerId = setTimeout(()=>{ openPrompt(); }, ms);
+  }
+
+  // Notes: load/save local
+  function loadNotes(){
+    try{
+      const raw = localStorage.getItem(NOTES_KEY);
+      if(!raw) return;
+      const obj = JSON.parse(raw);
+      const ta = document.getElementById('visitNotes');
+      if(ta && obj && typeof obj.text === 'string') ta.value = obj.text;
+      if(obj && obj.savedAt) setText('notesSavedAt', obj.savedAt);
+    }catch(e){}
+  }
+  function saveNotes(){
+    const ta = document.getElementById('visitNotes');
+    const text = ta ? ta.value : '';
+    const savedAt = fmtTime(new Date());
+    try{
+      localStorage.setItem(NOTES_KEY, JSON.stringify({text, savedAt}));
+    }catch(e){}
+    setText('notesSavedAt', savedAt);
+    setText('safetyCallResult', 'Notes saved (local)');
+  }
+
+  // Wire safety card buttons
+  const cancelBtn = document.getElementById('btnCancelSafetyTimer');
+  if(cancelBtn) cancelBtn.addEventListener('click', ()=>{ clearTimers(); setText('safetyCallResult','Timer cancelled'); });
+
+  const triggerBtn = document.getElementById('btnTriggerSafetyPrompt');
+  if(triggerBtn) triggerBtn.addEventListener('click', ()=> openPrompt());
+
+  const ext15 = document.getElementById('btnExtend15');
+  if(ext15) ext15.addEventListener('click', ()=>{
+    if(!countdownEndsAt){ return; }
+    countdownEndsAt += 15*60*1000;
+    setText('safetyCallResult', 'Extended +15 min (prototype)');
+  });
+
+  const ext30 = document.getElementById('btnExtend30');
+  if(ext30) ext30.addEventListener('click', ()=>{
+    if(!countdownEndsAt){ return; }
+    countdownEndsAt += 30*60*1000;
+    setText('safetyCallResult', 'Extended +30 min (prototype)');
+  });
+
+  const btnSave = document.getElementById('btnSaveNotes');
+  if(btnSave) btnSave.addEventListener('click', ()=> saveNotes());
+
+  const btnEnd = document.getElementById('btnEndVisit');
+  if(btnEnd) btnEnd.addEventListener('click', ()=>{
+    const endNow = new Date();
+    setText('visitEndTime', fmtShort(endNow));
+    setTimeInput('visitResultsDepartureTime', endNow);
+    clearTimers();
+    setText('safetyCallResult', 'Visit ended');
+    // optional: auto-save notes on end
+    saveNotes();
+  });
+
+  // Status buttons (form-only)
+  const stLate = document.getElementById('btnStatusRunningLate');
+  if(stLate) stLate.addEventListener('click', ()=> setText('safetyCallResult','Status: Running late'));
+
+  const stAssist = document.getElementById('btnStatusNeedAssist');
+  if(stAssist) stAssist.addEventListener('click', ()=> setText('safetyCallResult','Status: Need assistance (form-only)'));
+
+  const stLeaving = document.getElementById('btnStatusLeaving');
+  if(stLeaving) stLeaving.addEventListener('click', ()=> setText('safetyCallResult','Status: Leaving now'));
+
+  // Modal buttons
+    const minBtn = document.getElementById('btnMinimizeSafetyPrompt');
+  if(minBtn){
+    minBtn.addEventListener('click', ()=>{
+      // Hide modal, show dock
+      showModal(false);
+      showDock(true);
+    });
+  }
+
+  const undockBtn = document.getElementById('btnUndockSafetyPrompt');
+  if(undockBtn){
+    undockBtn.addEventListener('click', ()=>{
+      showDock(false);
+      showModal(true);
+      speakScript();
+    });
+  }
+  const dismissDockBtn = document.getElementById('btnDismissDock');
+  if(dismissDockBtn){
+    dismissDockBtn.addEventListener('click', ()=>{
+      showDock(false);
+    });
+  }
+
+  const dockSendHelpBtn = document.getElementById('btnDockSendHelp');
+  if(dockSendHelpBtn){
+    dockSendHelpBtn.addEventListener('click', ()=>{
+      setText('safetyCallResult','SEND HELP clicked (prototype)');
+      try{ const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='SEND HELP clicked (prototype)'; }catch(e){}
+      const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='SEND HELP clicked (prototype)';
+    });
+  }
+  const dockPressOneBtn = document.getElementById('btnDockPressOne');
+  if(dockPressOneBtn){
+    dockPressOneBtn.addEventListener('click', ()=>{
+      setText('safetyCallResult','User pressed 1 (OK)');
+      const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='User pressed 1 (OK)';
+      showDock(false);
+    });
+  }
+
+  const closeBtn = document.getElementById('btnCloseSafetyPrompt');
+  if(closeBtn) closeBtn.addEventListener('click', ()=> showModal(false));
+
+  const sendHelpBtn = document.getElementById('btnSendHelp');
+  if(sendHelpBtn){
+    sendHelpBtn.addEventListener('click', ()=>{
+      setText('safetyCallResult','SEND HELP clicked (prototype)');
+      try{ const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='SEND HELP clicked (prototype)'; }catch(e){}
+      // keep modal open so nurse can still press 1 or close
+    });
+  }
+
+  const pressOneBtn = document.getElementById('btnPressOne');
+  if(pressOneBtn) pressOneBtn.addEventListener('click', ()=>{ setText('safetyCallResult','User pressed 1 (OK)');
+      try{ const d=document.getElementById('dockSafetyResult'); if(d) d.textContent='User pressed 1 (OK)'; }catch(e){}
+      showModal(false);
+      showDock(false); });
+
+  document.addEventListener('keydown', (e)=>{
+    const modal = document.getElementById('safetyPromptModal');
+    if(!modal || modal.classList.contains('hidden')) return;
+    if(e.key === '1'){
+      e.preventDefault();
+      setText('safetyCallResult','User pressed 1 (OK)');
+      showModal(false);
+    }
+  });
+
+  // Hook Start Visit: start timer + preserve existing behavior
+  const startVisitBtn = document.getElementById('btnStartVisit');
+  if(startVisitBtn){
+    startVisitBtn.addEventListener('click', ()=>{
+      startSafetyTimerTestMode();
+      // ensure arrival time always set immediately
+      const now = new Date();
+      setText('visitArrivalTime', fmtShort(now));
+      setTimeInput('visitResultsArrivalTime', now);
+    setTimeInput('visitResultsArrivalTime', now);
+    
+      // Show Safety Check form immediately on Start Visit
+      openPrompt();
+      // Keep Public Safety accordion visible/open
+      try{ const acc=document.getElementById('publicSafetyAccordion'); if(acc) acc.open=true; }catch(e){}
+});
+  }
+
+  // Optional: Start Next Visit can also start timer
+  const startNextBtn = document.getElementById('btnStartNextVisit');
+  if(startNextBtn){
+    startNextBtn.addEventListener('click', ()=> startSafetyTimerTestMode());
+  }
+
+  // Init
+  loadNotes();
+})();
+</script><script>
+// Keep Public Safety accordion open on Start Visit
+(function(){
+  function openPublicSafetyAccordion(){
+    const acc = document.getElementById('publicSafetyAccordion');
+    if(!acc) return;
+    acc.classList.remove('hidden');
+    acc.open = true;
+  }
+
+  const btn = document.getElementById('btnStartVisit');
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      setTimeout(openPublicSafetyAccordion, 300);
+    });
+  }
+})();
+</script>
+
+
+
+<!-- Safety Prompt Dock (Prototype) -->
+<div id="safetyPromptDock" class="fixed bottom-4 right-4 hidden z-[9999]">
+  <div class="rounded-2xl bg-slate-950 border border-slate-700 shadow-2xl p-3 text-slate-100 w-[min(420px,92vw)]">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-shield-heart"></i>
+        <div class="font-semibold text-sm">Safety Check (Docked)</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnUndockSafetyPrompt" class="px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Open
+        </button>
+        <button id="btnDismissDock" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">
+          Dismiss
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-2 text-xs text-slate-400">
+      Script: <span class="text-slate-100">Press 1 if you are OK.</span>
+      · Result: <span id="dockSafetyResult" class="text-slate-100">—</span>
+    </div>
+
+    <div class="mt-3 flex gap-2 flex-wrap">
+      <button id="btnDockSendHelp" class="px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-hand"></i> Send Help
+      </button>
+      <button id="btnDockPressOne" class="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-keyboard"></i> Press 1 (I’m OK)
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// Populate departure time everywhere on Complete Visit
+(function(){
+  function hhmm(d){
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    return `${h}:${m}`;
+  }
+  function setTime(id, d){
+    const el = document.getElementById(id);
+    if(el) el.value = hhmm(d);
+  }
+
+  const btn = document.getElementById('btnEndVisit');
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      const now = new Date();
+      // Visit Results form
+      setTime('visitResultsDepartureTime', now);
+      // Safety card display
+      const span = document.getElementById('visitEndTime');
+      if(span) span.textContent = hhmm(now);
+    });
+  }
+})();
+</script>
+
+
+
+
+<script>
+/**
+ * hhClientOrder (Prototype) — v3 (Unique Keys + No Disappearing)
+ * Root cause fixed:
+ *  - Some clients shared identical derived keys (name/address parsing), so the Map overwrote entries.
+ *  - Result: after reorder, only the last duplicate keys remained (e.g., 7 → 2).
+ * Fix:
+ *  - Assign a guaranteed-unique stable key per client button on first load: "c<index>__<hash>"
+ *  - Never rely on parsed name/address for identity.
+ *  - Keep container as drop target with placeholder.
+ *  - Never clear list via innerHTML.
+ *  - Persist order + start selection in localStorage.
+ */
+(function hhClientOrder(){
+  const KEY_ORDER = "hh_client_order_v3";
+  const KEY_START = "hh_client_start_v3";
+
+  // Route-change guard:
+  // Once a visit has started, we prompt before allowing reorder (drag/drop or auto-reorder).
+  // Another script sets window.hhRouteActive = true when Start Visit / Start Next Visit is clicked.
+  function hhConfirmRouteChange(){
+    if(!window.hhRouteActive) return true;
+    return window.confirm("A visit is in progress. Do you want to change the client route/order anyway?");
+  }
+
+
+  const qs  = (sel, root=document)=>root.querySelector(sel);
+  const qsa = (sel, root=document)=>Array.from(root.querySelectorAll(sel));
+  const safeText = (el)=> (el && el.textContent ? el.textContent : "").trim();
+
+  // Locate Clients tab roster list container (left column)
+  const clientsTab = document.getElementById("clients");
+  if(!clientsTab) return;
+
+  const rosterCard = qsa("#clients .grid > div", clientsTab)[0] || qs("#clients .rounded-2xl", clientsTab);
+  if(!rosterCard) return;
+
+  const listWrap = qs(".mt-4.space-y-2", rosterCard);
+  if(!listWrap) return;
+
+  // Build toolbar (only once)
+  if(!qs("#hhClientOrderToolbar", rosterCard)){
+    const toolbar = document.createElement("div");
+    toolbar.id = "hhClientOrderToolbar";
+    toolbar.className = "mt-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-3";
+    toolbar.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="text-sm font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-route"></i>
+          Route Order (prototype)
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="btnReorderFromStart" class="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500">
+            Reorder from Start → Last
+          </button>
+          <button id="btnResetClientOrder" class="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900">
+            Reset Order
+          </button>
+        </div>
+      </div>
+      <div class="mt-2 text-xs text-slate-400">
+        Tip: Drag clients to rearrange, or click the <span class="text-amber-200 font-semibold">star</span> to choose the first stop.
+        Order is saved on this device.
+      </div>
+    `;
+    listWrap.parentElement.insertBefore(toolbar, listWrap);
+  }
+
+  // Capture ALL client nodes on first load so we can always restore them.
+  const initialButtons = qsa(":scope > button", listWrap);
+  if(!initialButtons.length) return;
+
+  // Stable unique key per button (do not parse name/address for identity)
+  function hashStr(s){
+    let h = 2166136261;
+    for(let i=0;i<s.length;i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  }
+
+  const keyToBtn = new Map();
+  initialButtons.forEach((btn, idx)=>{
+    const base = safeText(btn);
+    const key = `c${idx+1}__${hashStr(base)}`;
+    btn.dataset.hhClientKey = key;
+    keyToBtn.set(key, btn);
+  });
+
+  // Placeholder line for drop position
+  const placeholder = document.createElement("div");
+  placeholder.id = "hhDropPlaceholder";
+  placeholder.className = "h-10 rounded-xl border-2 border-dashed border-amber-500/60 bg-amber-900/10";
+  placeholder.style.display = "none";
+  if(!listWrap.contains(placeholder)) listWrap.appendChild(placeholder);
+
+  let draggingEl = null;
+
+  function renderStartBadges(){
+    const startKey = (localStorage.getItem(KEY_START)||"").toLowerCase();
+    qsa(":scope > button", listWrap).forEach(btn=>{
+      const k = (btn.dataset.hhClientKey||"").toLowerCase();
+      const startBtn = btn.querySelector(".hhStartBtn");
+      const starIcon = startBtn ? startBtn.querySelector("i") : null;
+      const label = startBtn ? startBtn.querySelector("span") : null;
+
+      if(starIcon) starIcon.className = (k && k===startKey) ? "fa-solid fa-star" : "fa-regular fa-star";
+      if(label) label.textContent = (k && k===startKey) ? "First stop" : "Start here";
+
+      let pill = btn.querySelector(".hhFirstStopPill");
+      if(k && k===startKey){
+        if(!pill){
+          pill = document.createElement("div");
+          pill.className = "hhFirstStopPill mt-2 inline-flex items-center gap-2 rounded-full border border-amber-700/50 bg-amber-900/20 px-3 py-1 text-xs text-amber-200";
+          pill.innerHTML = '<i class="fa-solid fa-location-dot"></i> First stop';
+          btn.appendChild(pill);
+        }
+      } else {
+        if(pill) pill.remove();
+      }
+    });
+  }
+
+  function saveOrder(){
+    const order = qsa(":scope > button", listWrap)
+      .map(b => (b.dataset.hhClientKey||"").toLowerCase())
+      .filter(Boolean);
+    localStorage.setItem(KEY_ORDER, JSON.stringify(order));
+  }
+
+  function restoreAllButtonsInSomeOrder(orderKeys){
+    const keys = Array.isArray(orderKeys) && orderKeys.length
+      ? orderKeys
+      : Array.from(keyToBtn.keys());
+
+    const buttonsInOrder = [];
+    const seen = new Set();
+
+    keys.forEach(k=>{
+      const btn = keyToBtn.get(k);
+      if(btn && !seen.has(k)){
+        buttonsInOrder.push(btn);
+        seen.add(k);
+      }
+    });
+    // Append any missing
+    keyToBtn.forEach((btn, k)=>{
+      if(!seen.has(k)){
+        buttonsInOrder.push(btn);
+        seen.add(k);
+      }
+    });
+
+    listWrap.replaceChildren(...buttonsInOrder, placeholder);
+  }
+
+  function applySavedOrder(){
+    const raw = localStorage.getItem(KEY_ORDER);
+    if(!raw) return;
+    try{
+      const order = JSON.parse(raw);
+      if(Array.isArray(order) && order.length){
+        restoreAllButtonsInSomeOrder(order.map(x=>String(x).toLowerCase()));
+      }
+    }catch(e){}
+  }
+
+  function decorateButtons(){
+    qsa(":scope > button", listWrap).forEach(btn=>{
+      btn.setAttribute("draggable","true");
+
+      if(!btn.querySelector(".hhClientBadges")){
+        const badges = document.createElement("div");
+        badges.className = "hhClientBadges mt-2 flex items-center justify-between";
+        badges.innerHTML = `
+          <div class="text-xs text-slate-400 flex items-center gap-2">
+            <span class="inline-flex items-center gap-2">
+              <i class="fa-solid fa-grip-lines"></i> drag to reorder
+            </span>
+          </div>
+          <button type="button" class="hhStartBtn text-amber-200 hover:text-amber-100 text-xs font-semibold flex items-center gap-1">
+            <i class="fa-regular fa-star"></i><span>Start here</span>
+          </button>
+        `;
+        btn.appendChild(badges);
+      }
+
+      const startBtn = btn.querySelector(".hhStartBtn");
+      if(startBtn && !startBtn.dataset.hhWired){
+        startBtn.dataset.hhWired = "1";
+        startBtn.addEventListener("click",(e)=>{
+          e.preventDefault(); e.stopPropagation();
+          localStorage.setItem(KEY_START, (btn.dataset.hhClientKey||"").toLowerCase());
+          renderStartBadges();
+        });
+      }
+
+      if(btn.dataset.hhDnD) return;
+      btn.dataset.hhDnD = "1";
+
+      btn.addEventListener("dragstart",(e)=>{
+        if(!hhConfirmRouteChange()){ e.preventDefault(); return; }
+
+        draggingEl = btn;
+        btn.classList.add("ring-2","ring-blue-500/60");
+        placeholder.style.display = "";
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", (btn.dataset.hhClientKey||"").toLowerCase());
+      });
+
+      btn.addEventListener("dragend",()=>{
+        btn.classList.remove("ring-2","ring-blue-500/60");
+        placeholder.style.display = "none";
+        draggingEl = null;
+        saveOrder();
+        renderStartBadges();
+      });
+    });
+  }
+
+  function getDragAfterElement(container, y){
+    const els = qsa(":scope > button", container).filter(el => el !== draggingEl);
+    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+    els.forEach(child=>{
+      const box = child.getBoundingClientRect();
+      const offset = y - (box.top + box.height / 2);
+      if(offset < 0 && offset > closest.offset){
+        closest = { offset, element: child };
+      }
+    });
+    return closest.element;
+  }
+
+  listWrap.addEventListener("dragover",(e)=>{
+    e.preventDefault();
+    if(!draggingEl) return;
+    const afterEl = getDragAfterElement(listWrap, e.clientY);
+    if(afterEl == null){
+      listWrap.appendChild(placeholder);
+    } else {
+      listWrap.insertBefore(placeholder, afterEl);
+    }
+  });
+
+  listWrap.addEventListener("drop",(e)=>{
+    e.preventDefault();
+    if(!draggingEl) return;
+    if(placeholder.parentElement === listWrap){
+      listWrap.insertBefore(draggingEl, placeholder);
+    }
+    placeholder.style.display = "none";
+    draggingEl.classList.remove("ring-2","ring-blue-500/60");
+    draggingEl = null;
+    saveOrder();
+    renderStartBadges();
+  });
+
+  // Route reorder (prototype): deterministic coords by key hash
+  function reorderFromStart(){
+    const buttons = qsa(":scope > button", listWrap);
+    if(!buttons.length) return;
+
+    const startKey = (localStorage.getItem(KEY_START)||"").toLowerCase();
+    let startBtn = buttons.find(b => (b.dataset.hhClientKey||"").toLowerCase()===startKey) || buttons[0];
+
+    function coordForKey(key){
+      const h = parseInt(hashStr(key).slice(0,8), 16) || 0;
+      const baseLat = 35.1495, baseLon = -90.0490;
+      const j1 = ((h % 1000) / 1000) * 0.18 - 0.09;
+      const j2 = (((h/7) % 1000) / 1000) * 0.18 - 0.09;
+      return { lat: baseLat + j1, lon: baseLon + j2 };
+    }
+    function hav(a,b){
+      const R = 6371e3, toRad = (x)=>x*Math.PI/180;
+      const φ1=toRad(a.lat), φ2=toRad(b.lat);
+      const dφ=toRad(b.lat-a.lat), dλ=toRad(b.lon-a.lon);
+      const s = Math.sin(dφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(dλ/2)**2;
+      return 2*R*Math.asin(Math.sqrt(s));
+    }
+
+    const start = { key: (startBtn.dataset.hhClientKey||"").toLowerCase(), btn: startBtn, coord: coordForKey((startBtn.dataset.hhClientKey||"").toLowerCase()) };
+    const remaining = buttons.filter(b=>b!==startBtn).map(b=>{
+      const k = (b.dataset.hhClientKey||"").toLowerCase();
+      return { key: k, btn: b, coord: coordForKey(k) };
+    });
+
+    const route = [start];
+    while(remaining.length){
+      const last = route[route.length-1];
+      let bestIdx = 0, bestDist = Infinity;
+      for(let i=0;i<remaining.length;i++){
+        const d = hav(last.coord, remaining[i].coord);
+        if(d < bestDist){ bestDist = d; bestIdx = i; }
+      }
+      route.push(remaining.splice(bestIdx,1)[0]);
+    }
+
+    restoreAllButtonsInSomeOrder(route.map(r=>r.key));
+    localStorage.setItem(KEY_START, start.key);
+    saveOrder();
+    decorateButtons();
+    renderStartBadges();
+  }
+
+  const btnRe = document.getElementById("btnReorderFromStart");
+  const btnReset = document.getElementById("btnResetClientOrder");
+  if(btnRe && !btnRe.dataset.hhWired){
+    btnRe.dataset.hhWired = "1";
+    btnRe.addEventListener("click", ()=>{ if(!hhConfirmRouteChange()) return; reorderFromStart(); });
+  }
+  if(btnReset && !btnReset.dataset.hhWired){
+    btnReset.dataset.hhWired = "1";
+    btnReset.addEventListener("click", ()=>{ if(window.hhRouteActive){ if(!window.confirm("A visit is in progress. Resetting will change the route/order. Continue?")) return; }
+
+      localStorage.removeItem(KEY_ORDER);
+      localStorage.removeItem(KEY_START);
+      restoreAllButtonsInSomeOrder(Array.from(keyToBtn.keys()));
+      renderStartBadges();
+      saveOrder();
+    });
+  }
+
+  // Init
+  decorateButtons();
+  applySavedOrder();
+  decorateButtons();
+  renderStartBadges();
+})();
+</script>
+</body>
+</html>
