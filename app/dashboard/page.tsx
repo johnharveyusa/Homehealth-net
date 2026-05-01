@@ -3,344 +3,367 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-interface Nurse {
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface NurseSession {
   name: string;
-  role: string;
-  territory: string;
+  agency: string;
+  agencyCode: string;
+  code: string;
+  loginTime: string;
 }
 
-type VisitStatus = "scheduled" | "active" | "done";
-
-interface Client {
+interface Visit {
   id: string;
-  name: string;
-  lastName: string;
-  firstName: string;
-  addr: string;
-  time: string;
-  careTypes: string[];
-  gate: string;
-  parking: string;
-  hazards: string;
-  dob: string;
-  status: VisitStatus;
-  flagRisk?: boolean;
+  patientName: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  scheduledTime: string;
+  status: "pending" | "en-route" | "arrived" | "completed" | "skipped";
+  safetyScore?: number;
+  crimeCount?: number;
+  hasWarrant?: boolean;
+  sexOffender?: boolean;
+  notes?: string;
 }
 
-// ── Demo client roster ─────────────────────────────────────────────────────
-const CLIENTS: Client[] = [
-  { id:"1",  name:"Mary Johnson",    lastName:"Johnson",  firstName:"Mary",     addr:"1234 Poplar Ave, Memphis, TN",          time:"09:30", careTypes:["Skilled Nursing","Wound Care"],  gate:"#4412", parking:"Rear lot",  hazards:"Dog in yard",   dob:"1948-05-11", status:"done"      },
-  { id:"2",  name:"Luis Rivera",     lastName:"Rivera",   firstName:"Luis",     addr:"901 S Main St, Memphis, TN",            time:"11:15", careTypes:["Physical Therapy"],              gate:"—",     parking:"Street",    hazards:"Steep steps",   dob:"1962-01-02", status:"active"    },
-  { id:"3",  name:"Sara Brown",      lastName:"Brown",    firstName:"Sara",     addr:"2016 Union Ave, Memphis, TN",           time:"14:00", careTypes:["OT"],                            gate:"—",     parking:"Driveway",  hazards:"Poor lighting", dob:"1956-10-19", status:"scheduled", flagRisk:true },
-  { id:"4",  name:"Angela Walker",   lastName:"Walker",   firstName:"Angela",   addr:"3000 Barron Ave, Memphis, TN",          time:"15:30", careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1953-04-12", status:"scheduled" },
-  { id:"5",  name:"Robert Hayes",    lastName:"Hayes",    firstName:"Robert",   addr:"2800 Spotswood Ave, Memphis, TN",       time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Driveway",  hazards:"—",             dob:"1949-09-03", status:"scheduled" },
-  { id:"6",  name:"Mary Ellis",      lastName:"Ellis",    firstName:"Mary",     addr:"4646 Poplar Ave, Memphis, TN",          time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1960-11-27", status:"scheduled" },
-  { id:"7",  name:"Kevin Simmons",   lastName:"Simmons",  firstName:"Kevin",    addr:"1500 Pendleton St, Memphis, TN",        time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1957-02-14", status:"scheduled" },
-  { id:"8",  name:"Patricia Moore",  lastName:"Moore",    firstName:"Patricia", addr:"1100 Semmes Ave, Memphis, TN",          time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1965-07-08", status:"scheduled" },
-  { id:"9",  name:"Derrick Johnson", lastName:"Johnson",  firstName:"Derrick",  addr:"3000 Park Ave, Memphis, TN",            time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1951-12-19", status:"scheduled" },
-  { id:"10", name:"Sharon Price",    lastName:"Price",    firstName:"Sharon",   addr:"3100 Larkspur Ln, Memphis, TN",         time:"—",     careTypes:["Skilled Nursing"],               gate:"—",     parking:"Street",    hazards:"—",             dob:"1953-04-12", status:"scheduled" },
+// ─── Mock visits for demo ─────────────────────────────────────────────────────
+const DEMO_VISITS: Visit[] = [
+  {
+    id: "v1",
+    patientName: "Robert Tatum",
+    address: "4128 Weymouth Cove",
+    city: "Memphis",
+    state: "TN",
+    zip: "38125",
+    scheduledTime: "09:00",
+    status: "pending",
+  },
+  {
+    id: "v2",
+    patientName: "Gloria Simmons",
+    address: "2847 Lamar Ave",
+    city: "Memphis",
+    state: "TN",
+    zip: "38114",
+    scheduledTime: "11:30",
+    status: "pending",
+  },
+  {
+    id: "v3",
+    patientName: "Earl Washington",
+    address: "1190 Mississippi Blvd",
+    city: "Memphis",
+    state: "TN",
+    zip: "38106",
+    scheduledTime: "14:00",
+    status: "pending",
+  },
 ];
 
-function mapsUrl(addr: string) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
+// ─── Safety color helper ──────────────────────────────────────────────────────
+function safetyColor(score?: number) {
+  if (score === undefined) return "text-slate-400";
+  if (score >= 70) return "text-red-400";
+  if (score >= 40) return "text-yellow-400";
+  return "text-green-400";
 }
 
-function statusIcon(s: VisitStatus) {
-  if (s === "done")      return "✅";
-  if (s === "active")    return "🔵";
-  return "⬜";
+function safetyLabel(score?: number) {
+  if (score === undefined) return "Not checked";
+  if (score >= 70) return "HIGH RISK";
+  if (score >= 40) return "MODERATE";
+  return "LOW RISK";
 }
 
-// ── Client accordion card ──────────────────────────────────────────────────
-function ClientCard({
-  client,
-  isOpen,
-  onToggle,
-  onMarkDone,
-  onStartVisit,
-}: {
-  client: Client;
-  isOpen: boolean;
-  onToggle: () => void;
-  onMarkDone: () => void;
-  onStartVisit: (addr: string) => void;
-}) {
-  const borderClass =
-    client.status === "active"
-      ? "border-blue-700/60 ring-1 ring-blue-700/40"
-      : "border-slate-800";
-  const opacity = client.status === "done" ? "opacity-60" : "";
+// ─── ArcGIS crime fetch ───────────────────────────────────────────────────────
+// FIXED: was using incident_date (wrong field) and ISO date string (wrong format)
+// Correct field is Offense_Datetime — epoch milliseconds comparison
+async function fetchCrimeCount(lat: number, lng: number): Promise<number> {
+  const radius = 804; // 0.5 miles in meters
+  const cutoffMs = Date.now() - 14 * 24 * 60 * 60 * 1000;
 
-  return (
-    <div className={`rounded-2xl border bg-slate-900/40 shadow ${borderClass} ${opacity}`}>
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-lg">{statusIcon(client.status)}</span>
-          <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">
-              {client.lastName}, {client.firstName}
-              {client.flagRisk && (
-                <span className="ml-2 text-xs rounded-full bg-amber-900/40 border border-amber-700/40 text-amber-200 px-2 py-0.5">
-                  Fall Risk
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-slate-400">
-              {client.time} · {client.careTypes[0]}
-            </div>
-          </div>
-        </div>
-        <span className={`text-slate-500 text-xs transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}>
-          ▶
-        </span>
-      </button>
+  // FIXED: use Offense_Datetime with epoch ms — this is the confirmed working field
+  const where = `Offense_Datetime >= ${cutoffMs}`;
 
-      {/* Body */}
-      {isOpen && (
-        <div className="px-4 pb-4">
-          <div className="text-xs text-slate-400 mb-3">{client.addr}</div>
+  const url =
+    `https://services2.arcgis.com/saWmpKJIUAjyyNVc/arcgis/rest/services/` +
+    `MPD_Public_Safety_Incidents/FeatureServer/0/query` +
+    `?where=${encodeURIComponent(where)}` +
+    `&geometry=${lng},${lat}` +
+    `&geometryType=esriGeometryPoint` +
+    `&spatialRel=esriSpatialRelWithin` +
+    `&distance=${radius}` +
+    `&units=esriSRUnit_Meter` +
+    `&returnCountOnly=true` +
+    `&f=json`;
 
-          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-            <div><span className="text-slate-500">Gate:</span> <span className="text-slate-300 font-mono">{client.gate}</span></div>
-            <div><span className="text-slate-500">Parking:</span> <span className="text-slate-300">{client.parking}</span></div>
-            <div><span className="text-slate-500">Hazards:</span> <span className="text-slate-300">{client.hazards}</span></div>
-            <div><span className="text-slate-500">DOB:</span> <span className="text-slate-300">{client.dob}</span></div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            {client.careTypes.map(t => (
-              <span key={t} className="rounded-full bg-slate-800 px-3 py-1 text-xs">{t}</span>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={mapsUrl(client.addr)}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-xl border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800"
-            >
-              🗺 Directions
-            </a>
-            <button
-              onClick={() => onStartVisit(client.addr)}
-              className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500"
-            >
-              ▶ Start Visit
-            </button>
-            {client.status !== "done" && (
-              <button
-                onClick={onMarkDone}
-                className="rounded-xl border border-emerald-700 text-emerald-300 px-3 py-2 text-xs hover:bg-emerald-900/20"
-              >
-                ✓ Mark Done
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.count ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
-// ── Dashboard page ─────────────────────────────────────────────────────────
+// ─── Geocode address via ESRI World GeocodeServer ─────────────────────────────
+async function geocode(
+  address: string,
+  city: string,
+  state: string
+): Promise<{ lat: number; lng: number } | null> {
+  const full = `${address}, ${city}, ${state}`;
+  const url =
+    `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/` +
+    `findAddressCandidates?SingleLine=${encodeURIComponent(full)}&f=json&outFields=location`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const loc = data.candidates?.[0]?.location;
+    if (!loc) return null;
+    return { lat: loc.y, lng: loc.x };
+  } catch {
+    return null;
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [nurse, setNurse]       = useState<Nurse | null>(null);
-  const [clients, setClients]   = useState<Client[]>(CLIENTS);
-  const [openId, setOpenId]     = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
-  const [visitAddr, setVisitAddr] = useState<string | null>(null);
+  const [nurse, setNurse] = useState<NurseSession | null>(null);
+  const [visits, setVisits] = useState<Visit[]>(DEMO_VISITS);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [checking, setChecking] = useState<string | null>(null);
+  const [tab, setTab] = useState<"visits" | "map" | "settings">("visits");
 
+  // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const stored = sessionStorage.getItem("nurse");
-    if (!stored) { router.push("/login"); return; }
-    setNurse(JSON.parse(stored));
-    // Auto-open active client
-    const active = CLIENTS.find(c => c.status === "active");
-    if (active) setOpenId(active.id);
+    const raw = sessionStorage.getItem("hh_nurse");
+    if (!raw) { router.replace("/login"); return; }
+    setNurse(JSON.parse(raw));
   }, [router]);
 
-  function toggle(id: string) {
-    setOpenId(prev => prev === id ? null : id);
-  }
-
-  function markDone(id: string) {
-    setClients(prev =>
-      prev.map(c => c.id === id ? { ...c, status: "done" as VisitStatus } : c)
+  // ── Run safety check on a visit ────────────────────────────────────────────
+  const runSafetyCheck = async (visit: Visit) => {
+    setChecking(visit.id);
+    const coords = await geocode(visit.address, visit.city, visit.state);
+    let crimeCount = 0;
+    if (coords) {
+      crimeCount = await fetchCrimeCount(coords.lat, coords.lng);
+    }
+    const score = Math.min(100, crimeCount * 4);
+    setVisits((prev) =>
+      prev.map((v) =>
+        v.id === visit.id
+          ? { ...v, crimeCount, safetyScore: score }
+          : v
+      )
     );
-    setOpenId(null);
-  }
+    setChecking(null);
+  };
 
-  function startVisit(addr: string) {
-    setVisitAddr(addr);
-    // TODO: navigate to /visit route with addr as query param
-    alert(`Visit Detail for:\n${addr}\n\n(Wire to /visit page in next sprint)`);
-  }
-
-  function signOut() {
-    sessionStorage.removeItem("nurse");
-    router.push("/login");
-  }
-
-  const filtered = clients.filter(c => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.addr.toLowerCase().includes(q);
-  });
-
-  const doneCount = clients.filter(c => c.status === "done").length;
+  // ── Update visit status ─────────────────────────────────────────────────────
+  const setStatus = (id: string, status: Visit["status"]) => {
+    setVisits((prev) => prev.map((v) => v.id === id ? { ...v, status } : v));
+  };
 
   if (!nurse) return null;
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+  const pending = visits.filter((v) => v.status === "pending");
+  const active  = visits.filter((v) => v.status === "en-route" || v.status === "arrived");
+  const done    = visits.filter((v) => v.status === "completed" || v.status === "skipped");
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-slate-800 grid place-items-center font-bold text-sm">HH</div>
-            <div>
-              <div className="text-sm font-semibold leading-4">Bloodhound Home Health</div>
-              <div className="text-xs text-slate-400">{nurse.territory} · {nurse.role}</div>
-            </div>
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+
+      {/* ── Header ── */}
+      <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏥</span>
+          <div>
+            <div className="text-sm font-semibold text-white leading-tight">Bloodhound</div>
+            <div className="text-xs text-slate-400 leading-tight">{nurse.agency}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-sm font-semibold">{nurse.name}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-xs text-slate-300 font-medium">{nurse.name}</div>
+            <div className="text-xs text-slate-500">{new Date().toLocaleDateString()}</div>
+          </div>
+          <button
+            onClick={() => { sessionStorage.removeItem("hh_nurse"); router.replace("/login"); }}
+            className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      {/* ── Tab bar ── */}
+      <nav className="bg-slate-900 border-b border-slate-800 flex">
+        {(["visits", "map", "settings"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              tab === t
+                ? "text-blue-400 border-b-2 border-blue-500"
+                : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            {t === "visits" ? "My Visits" : t === "map" ? "Map" : "Settings"}
+          </button>
+        ))}
+      </nav>
+
+      {/* ── VISITS TAB ── */}
+      {tab === "visits" && (
+        <main className="px-4 py-4 max-w-2xl mx-auto">
+
+          {/* Summary bar */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {[
+              { label: "Pending", count: pending.length, color: "text-yellow-400" },
+              { label: "Active",  count: active.length,  color: "text-blue-400"   },
+              { label: "Done",    count: done.length,    color: "text-green-400"  },
+            ].map((s) => (
+              <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                <div className={`text-2xl font-bold ${s.color}`}>{s.count}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Visit cards */}
+          {visits.map((visit) => (
+            <div
+              key={visit.id}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 cursor-pointer hover:border-slate-600 transition-all"
+              onClick={() => setSelectedVisit(visit === selectedVisit ? null : visit)}
+            >
+              {/* Card header */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-white text-sm truncate">{visit.patientName}</div>
+                  <div className="text-slate-400 text-xs mt-0.5 truncate">{visit.address}</div>
+                  <div className="text-slate-500 text-xs">{visit.city}, {visit.state} {visit.zip}</div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="text-xs text-slate-400">{visit.scheduledTime}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    visit.status === "completed" ? "bg-green-900 text-green-300" :
+                    visit.status === "en-route"  ? "bg-blue-900 text-blue-300" :
+                    visit.status === "arrived"   ? "bg-purple-900 text-purple-300" :
+                    visit.status === "skipped"   ? "bg-slate-800 text-slate-500" :
+                    "bg-yellow-900/50 text-yellow-300"
+                  }`}>
+                    {visit.status.replace("-", " ").toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Safety score row */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500">Safety:</span>
+                  <span className={`text-xs font-bold ${safetyColor(visit.safetyScore)}`}>
+                    {safetyLabel(visit.safetyScore)}
+                  </span>
+                  {visit.crimeCount !== undefined && (
+                    <span className="text-xs text-slate-600">({visit.crimeCount} incidents nearby)</span>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); runSafetyCheck(visit); }}
+                  disabled={checking === visit.id}
+                  className="text-xs bg-blue-900/50 hover:bg-blue-800 text-blue-300 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {checking === visit.id ? "Checking…" : "Check Safety"}
+                </button>
+              </div>
+
+              {/* Expanded actions */}
+              {selectedVisit?.id === visit.id && (
+                <div className="mt-3 pt-3 border-t border-slate-800 flex flex-wrap gap-2">
+                  {visit.status === "pending" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatus(visit.id, "en-route"); }}
+                      className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      En Route
+                    </button>
+                  )}
+                  {visit.status === "en-route" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatus(visit.id, "arrived"); }}
+                      className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      Arrived
+                    </button>
+                  )}
+                  {(visit.status === "arrived" || visit.status === "en-route") && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatus(visit.id, "completed"); }}
+                      className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      Complete
+                    </button>
+                  )}
+                  {visit.status !== "completed" && visit.status !== "skipped" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatus(visit.id, "skipped"); }}
+                      className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg"
+                    >
+                      Skip
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://maps.google.com/?q=${encodeURIComponent(
+                        `${visit.address} ${visit.city} ${visit.state}`
+                      )}`);
+                    }}
+                    className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg"
+                  >
+                    Google Maps
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </main>
+      )}
+
+      {/* ── MAP TAB ── */}
+      {tab === "map" && (
+        <div className="flex items-center justify-center h-64 text-slate-500 text-sm">
+          Map view coming soon
+        </div>
+      )}
+
+      {/* ── SETTINGS TAB ── */}
+      {tab === "settings" && (
+        <div className="px-4 py-6 max-w-2xl mx-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="text-sm font-semibold text-white mb-3">Session Info</div>
+            <div className="space-y-2 text-xs text-slate-400">
+              <div><span className="text-slate-500">Nurse:</span> {nurse.name}</div>
+              <div><span className="text-slate-500">Agency:</span> {nurse.agency}</div>
+              <div><span className="text-slate-500">Code:</span> {nurse.agencyCode}</div>
+              <div><span className="text-slate-500">Login:</span> {new Date(nurse.loginTime).toLocaleString()}</div>
+            </div>
             <button
-              onClick={signOut}
-              className="rounded-xl border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-900"
+              onClick={() => { sessionStorage.removeItem("hh_nurse"); router.replace("/login"); }}
+              className="mt-4 text-xs bg-red-900/50 hover:bg-red-800 text-red-300 px-4 py-2 rounded-lg transition-colors"
             >
               Sign Out
             </button>
           </div>
         </div>
-      </header>
+      )}
 
-      <div className="mx-auto max-w-6xl px-4 py-6">
-
-        {/* Nurse banner */}
-        <div className="mb-5 rounded-2xl border border-blue-800/40 bg-blue-950/20 px-5 py-4 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs text-blue-300 font-semibold uppercase tracking-wider">Logged in as</div>
-            <div className="text-xl font-semibold mt-0.5">{nurse.name} — {nurse.role}</div>
-            <div className="text-xs text-slate-400 mt-1">
-              {nurse.territory} territory · {doneCount} of {clients.length} visits complete today
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: 2-col | Mobile: 1-col */}
-        <div className="lg:grid lg:grid-cols-3 lg:gap-6">
-
-          {/* LEFT — Accordion list */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">My Clients</h2>
-              <span className="text-xs text-slate-400">{doneCount} of {clients.length} complete</span>
-            </div>
-
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="mb-3 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm"
-              placeholder="Search clients…"
-            />
-
-            <div className="space-y-2">
-              {filtered.map(client => (
-                <ClientCard
-                  key={client.id}
-                  client={client}
-                  isOpen={openId === client.id}
-                  onToggle={() => toggle(client.id)}
-                  onMarkDone={() => markDone(client.id)}
-                  onStartVisit={startVisit}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* RIGHT — Desktop detail panel */}
-          <div className="hidden lg:block lg:col-span-2">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow sticky top-20">
-              {!openId ? (
-                <div className="text-center py-20 text-slate-500">
-                  <div className="text-5xl mb-4">👈</div>
-                  <div className="text-sm">Select a client to see full detail</div>
-                </div>
-              ) : (() => {
-                const c = clients.find(x => x.id === openId);
-                if (!c) return null;
-                return (
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-5">
-                      <div>
-                        <h3 className="text-2xl font-semibold">{c.name}</h3>
-                        <div className="text-sm text-slate-400 mt-1">{c.addr}</div>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <a
-                          href={mapsUrl(c.addr)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800"
-                        >
-                          🗺 Directions
-                        </a>
-                        <button
-                          onClick={() => startVisit(c.addr)}
-                          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
-                        >
-                          ▶ Start Visit
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm mb-5">
-                      {[
-                        ["Gate / Entry", c.gate],
-                        ["Parking",      c.parking],
-                        ["Hazards",      c.hazards],
-                        ["Appointment",  c.time],
-                        ["DOB",          c.dob],
-                        ["Status",       c.status.charAt(0).toUpperCase() + c.status.slice(1)],
-                      ].map(([label, val]) => (
-                        <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
-                          <div className="text-xs text-slate-500 mb-1">{label}</div>
-                          <div className="font-mono text-slate-200">{val}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-5">
-                      {c.careTypes.map(t => (
-                        <span key={t} className="rounded-full bg-slate-800 px-3 py-1 text-xs">{t}</span>
-                      ))}
-                      {c.flagRisk && (
-                        <span className="rounded-full bg-amber-900/40 border border-amber-700/40 text-amber-200 px-3 py-1 text-xs">
-                          ⚠ Fall Risk
-                        </span>
-                      )}
-                    </div>
-
-                    <button className="w-full rounded-xl border border-amber-700 text-amber-200 px-4 py-2 text-sm hover:bg-amber-900/20">
-                      🛡 Check Public Safety Events
-                    </button>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </main>
+    </div>
   );
 }

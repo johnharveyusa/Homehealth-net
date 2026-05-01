@@ -3,111 +3,134 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-// Demo PIN roster — replace with Supabase lookup in production
-const NURSES: Record<string, { name: string; role: string; territory: string }> = {
-  "1234": { name: "Taylor Smith",  role: "Skilled Nurse", territory: "Memphis" },
-  "5678": { name: "Jordan Lee",    role: "Therapist",     territory: "Memphis" },
-  "9012": { name: "Marcus Webb",   role: "Skilled Nurse", territory: "Memphis" },
+const VALID_CREDENTIALS: Record<string, { agencyCode: string; name: string; agency: string }> = {
+  "TEST01": { agencyCode: "COMPASSION", name: "Nurse Demo 1", agency: "Compassion Home Health" },
+  "TEST02": { agencyCode: "COMPASSION", name: "Nurse Demo 2", agency: "Compassion Home Health" },
+  "X7K2M9": { agencyCode: "COMPASSION", name: "Jane Morales", agency: "Compassion Home Health" },
+  "B4QR8T": { agencyCode: "HARMONY",   name: "Rosa Fleming", agency: "Harmony Care Services"  },
 };
 
 export default function LoginPage() {
   const router = useRouter();
-  const [pin, setPin]       = useState("");
-  const [status, setStatus] = useState<{ msg: string; color: string } | null>(null);
-  const [shake, setShake]   = useState(false);
+  const [agencyCode, setAgencyCode] = useState("");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function pressDigit(d: string) {
-    if (pin.length >= 4) return;
-    const next = pin + d;
-    setPin(next);
-    if (next.length === 4) {
-      setTimeout(() => attempt(next), 120);
-    }
-  }
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    setError("");
+    setLoading(true);
 
-  function attempt(code: string) {
-    const nurse = NURSES[code];
-    if (nurse) {
-      setStatus({ msg: `✓ Welcome, ${nurse.name}`, color: "text-emerald-400" });
-      // Store nurse in sessionStorage for dashboard to read
-      sessionStorage.setItem("nurse", JSON.stringify(nurse));
-      setTimeout(() => router.push("/dashboard"), 600);
+    const agency = agencyCode.replace(/\s/g, "").trim().toUpperCase();
+    const code   = pin.replace(/\s/g, "").trim().toUpperCase();
+
+    await new Promise((r) => setTimeout(r, 400));
+
+    const match = VALID_CREDENTIALS[code];
+    if (match && match.agencyCode === agency) {
+      sessionStorage.setItem("hh_nurse", JSON.stringify({
+        name: match.name,
+        agency: match.agency,
+        agencyCode: agency,
+        code,
+        loginTime: new Date().toISOString(),
+      }));
+      router.push("/dashboard");
     } else {
-      setStatus({ msg: "Incorrect PIN — try again", color: "text-rose-400" });
-      setShake(true);
-      setTimeout(() => { setShake(false); setPin(""); setStatus(null); }, 700);
+      setError("Agency code or access code not recognized.");
+      setLoading(false);
     }
-  }
-
-  function backspace() {
-    setPin(p => p.slice(0, -1));
-    setStatus(null);
-  }
-
-  function clear() {
-    setPin("");
-    setStatus(null);
-  }
-
-  const digits = ["1","2","3","4","5","6","7","8","9","CLR","0","⌫"];
+  };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className={`w-full max-w-xs text-center transition-transform ${shake ? "translate-x-2" : ""}`}>
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6">
 
-        {/* Logo */}
-        <div className="h-14 w-14 rounded-2xl bg-blue-600/20 border border-blue-700/40 grid place-items-center mx-auto mb-4">
-          <span className="text-2xl">🏥</span>
+      <div className="mb-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-900/40">
+          <span className="text-3xl">🏥</span>
         </div>
-
-        <h1 className="text-2xl font-bold text-slate-100">Bloodhound Home Health</h1>
-        <p className="text-sm text-slate-400 mt-1">Enter your assigned PIN</p>
-
-        {/* PIN dots */}
-        <div className="mt-6 flex justify-center gap-4">
-          {[0,1,2,3].map(i => (
-            <div key={i} className={`h-4 w-4 rounded-full border-2 transition-all ${
-              i < pin.length
-                ? "bg-blue-400 border-blue-400"
-                : "bg-transparent border-slate-600"
-            }`} />
-          ))}
-        </div>
-
-        {/* Status */}
-        <div className={`mt-2 text-xs h-5 ${status?.color ?? "text-slate-400"}`}>
-          {status?.msg ?? ""}
-        </div>
-
-        {/* Keypad */}
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {digits.map((d) => {
-            const isCLR = d === "CLR";
-            const isBK  = d === "⌫";
-            return (
-              <button
-                key={d}
-                onClick={() => isCLR ? clear() : isBK ? backspace() : pressDigit(d)}
-                className={`rounded-2xl border py-4 text-xl font-semibold transition-all active:scale-95
-                  ${isCLR || isBK
-                    ? "border-slate-700 bg-slate-950/40 text-slate-400 hover:bg-slate-800 text-sm"
-                    : "border-slate-700 bg-slate-950/30 text-slate-100 hover:bg-slate-800"
-                  }`}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Demo hint */}
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-left">
-          <div className="text-xs text-slate-500 font-semibold mb-1">Demo PINs</div>
-          <div className="text-xs text-slate-400">Taylor Smith (Nurse) — <span className="font-mono text-slate-300">1234</span></div>
-          <div className="text-xs text-slate-400">Jordan Lee (Therapist) — <span className="font-mono text-slate-300">5678</span></div>
-        </div>
-
+        <h1 className="text-2xl font-bold text-white tracking-tight">Bloodhound</h1>
+        <p className="text-slate-400 text-sm mt-1">Home Health Field Safety</p>
       </div>
-    </main>
+
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl"
+      >
+        <h2 className="text-slate-300 text-sm font-semibold mb-5 uppercase tracking-widest text-center">
+          Nurse Sign In
+        </h2>
+
+        <div className="space-y-4">
+
+          <div>
+            <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">
+              Agency Code
+            </label>
+            <input
+              type="text"
+              value={agencyCode}
+              onChange={(e) => setAgencyCode(e.target.value.replace(/\s/g, "").toUpperCase())}
+              placeholder="e.g. COMPASSION"
+              autoCapitalize="characters"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm tracking-widest uppercase focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">
+              Access Code
+            </label>
+            <input
+              type="text"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\s/g, "").toUpperCase())}
+              placeholder="e.g. X7K2M9"
+              autoCapitalize="characters"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={8}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm tracking-widest uppercase focus:outline-none focus:border-blue-500 transition-colors"
+            />
+            <p className="text-slate-600 text-xs mt-1.5">
+              Letters and numbers · provided by your agency
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-950 border border-red-800 rounded-xl px-4 py-3">
+              <p className="text-red-300 text-sm">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !agencyCode.trim() || !pin.trim()}
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold rounded-xl py-3 mt-2 transition-all text-sm tracking-wide"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Signing in…
+              </span>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+
+        </div>
+      </form>
+
+      <p className="text-slate-700 text-xs mt-8 text-center">
+        Powered by U.S. Crime Centers · homehealth.chat
+      </p>
+
+    </div>
   );
 }
